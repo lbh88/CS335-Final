@@ -142,7 +142,7 @@ int deflection=0;
 #endif //USE_SHIP
 int bg = 0;
 int show_ship = 0;
-int play_music = 0;
+int disp_intro = 0;
 
 int main(void)
 {
@@ -150,7 +150,7 @@ int main(void)
 	initXWindows();
 	init_opengl();
 	init();
-	init_sounds();
+	intro();
 	clock_gettime(CLOCK_REALTIME, &timePause);
 	clock_gettime(CLOCK_REALTIME, &timeStart);
 	while(!done) {
@@ -169,7 +169,7 @@ int main(void)
 			physics();
 			physicsCountdown -= physicsRate;
 		}
-		render();
+		disp_intro? render() : dispIntro();
 		glXSwapBuffers(dpy, win);
 	}
 	cleanupXWindows();
@@ -359,15 +359,11 @@ void init_sounds(void)
 		printf("ERROR - fmod_init()\n\n");
 		return;
 	}
-	if (fmod_createsound("./sounds/burn1.wav", 0)) {
-		printf("ERROR - fmod_createsound()\n\n");
-		return;
-	}
 	if (fmod_createsound("./sounds/burn2.wav", 1)) {
 		printf("ERROR - fmod_createsound()\n\n");
 		return;
 	}
-	fmod_setmode(0,FMOD_LOOP_OFF);
+	fmod_setmode(0,FMOD_LOOP_NORMAL);
 	//fmod_playsound(0);
 	//fmod_playsound(1);
 	//fmod_systemupdate();
@@ -469,11 +465,20 @@ void check_keys(XEvent *e)
 				ndrops = 0;
 			break;
 		case XK_s:
-			play_sounds ^= 1;
-			if (play_sounds) {
+			if (!disp_intro)
+			{
+				fmod_cleanup();
+				disp_intro ^= 1;
+				show_ship ^= 1;
+				bg ^= 1;
+				init_sounds();
+				play_sounds ^= 1;
+				
+			}
+			#ifdef USE_SOUND 
 				//fmod_playsound(0);
 				fmod_playsound(1);
-			}
+			#endif //USE_SOUND
 			break;
 		case XK_w:
 			if (shift) {

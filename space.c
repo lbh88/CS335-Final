@@ -129,7 +129,6 @@ void cleanup_raindrops(void);
 #define SHIP_ROUND 1
 typedef struct t_ship {
 	int shape;
-
 	Vec pos;
 	Vec lastpos;
 	float width;
@@ -442,19 +441,19 @@ void check_keys(XEvent *e)
 			break; */
 		case XK_Left:
 			VecCopy(ship.pos, ship.lastpos);
-			ship.pos[0] = ( ship.pos[0] <= 0 ? ship.pos[0]: ship.pos[0]-10.0);
+			ship.pos[0] = ( ship.pos[0] <= 0 ? ship.pos[0]: ship.pos[0]-5.0);
 			break;
 		case XK_Right:
 			VecCopy(ship.pos, ship.lastpos);
-			ship.pos[0] = ( ship.pos[0] >= xres ? ship.pos[0]: ship.pos[0]+10.0);
+			ship.pos[0] = ( ship.pos[0] >= xres ? ship.pos[0]: ship.pos[0]+5.0);
 			break;
 		case XK_Up:
 			VecCopy(ship.pos, ship.lastpos);
-			ship.pos[1] = ( ship.pos[1] >= yres ? ship.pos[1]: ship.pos[1]+10.0);
+			ship.pos[1] = ( ship.pos[1] >= yres ? ship.pos[1]: ship.pos[1]+5.0);
 			break;
 		case XK_Down:
 			VecCopy(ship.pos, ship.lastpos);
-			ship.pos[1] = ( ship.pos[1] <= 0 ? ship.pos[1] : ship.pos[1]-10.0);
+			ship.pos[1] = ( ship.pos[1] <= 0 ? ship.pos[1] : ship.pos[1]-5.0);
 			break;
 		case XK_equal:
 			if (++ndrops > 60)

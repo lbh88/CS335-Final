@@ -14,7 +14,6 @@
 #include "ppm.h"
 #include "fonts.h"
 #include "lamMods.h"
-#include "SOIL/SOIL.h"
 #define USE_SOUND
 
 #ifdef USE_SOUND
@@ -26,7 +25,11 @@
 int xres, yres;
 GLuint shipTexture;
 GLuint introTexture;
+GLuint silhouetteTexture;
 Ppmimage *introImage=NULL;
+Ppmimage *shipImage;
+
+unsigned char *buildAlphaData(Ppmimage *img);
 
 typedef struct t_ship {
   int shape;
@@ -87,6 +90,10 @@ void dispBG(GLuint backgroundTexture)
 		glTexCoord2f(1.0f, 0.0f); glVertex2i(xres, yres);
 		glTexCoord2f(1.0f, 1.0f); glVertex2i(xres, 0);
 	glEnd();
+	glBindTexture(GL_TEXTURE_2D, silhouetteTexture);
+	glEnable(GL_ALPHA_TEST);
+	glAlphaFunc(GL_GREATER, 0.0f);
+	glColor4ub(255,255,255,255);
 }
 
 void dispIntro()
@@ -123,18 +130,35 @@ void dispIntro()
 }
 
 void buildShipImage()
-{
-	glEnable( GL_BLEND); 
-	shipTexture = SOIL_load_OGL_texture
-	(
-		"./images/spaceship.png",
-		SOIL_LOAD_AUTO,
-		SOIL_CREATE_NEW_ID,
-		SOIL_FLAG_POWER_OF_TWO|SOIL_FLAG_MIPMAPS|SOIL_FLAG_MULTIPLY_ALPHA
-	);
-	if ( 0 == shipTexture )
-	{
-		printf( "SOIL loading error: '%s'\n", SOIL_last_result() );
-	}
+{	
+	shipImage     = ppm6GetImage("./images/spaceship.ppm");
+	//
+	//create opengl texture elements
+	glGenTextures(1, &shipTexture);
+	glGenTextures(1, &silhouetteTexture);
+		
+	int w = shipImage->width;
+	int h = shipImage->height;
+	//
+	glBindTexture(GL_TEXTURE_2D, shipTexture);
+	//
+	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+	glTexImage2D(GL_TEXTURE_2D, 0, 3, w, h, 0,
+							GL_RGB, GL_UNSIGNED_BYTE, shipImage->data);
+							
+							
+	unsigned char *silhouetteData = buildAlphaData(shipImage);	
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0,
+							GL_RGBA, GL_UNSIGNED_BYTE, silhouetteData);
+	free(silhouetteData);
 
 }
+
+void fmod_stopSong(int i)
+{
+	i = 0;
+	
+	
+}
+

@@ -155,10 +155,4 @@ void buildShipImage()
 
 }
 
-void fmod_stopSong(int i)
-{
-	i = 0;
-	
-	
-}
 

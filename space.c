@@ -358,7 +358,7 @@ void init_sounds(void)
 		printf("ERROR - fmod_init()\n\n");
 		return;
 	}
-	if (fmod_createsound("./sounds/burn2.wav", 1)) {
+	if (fmod_createsound("./sounds/burn2.wav", 0)) {
 		printf("ERROR - fmod_createsound()\n\n");
 		return;
 	}
@@ -466,18 +466,19 @@ void check_keys(XEvent *e)
 		case XK_s:
 			if (!disp_intro)
 			{
-				fmod_cleanup();
+				fmod_cleanupIntro(0);
 				disp_intro ^= 1;
 				show_ship ^= 1;
 				bg ^= 1;
 				init_sounds();
 				play_sounds ^= 1;
-				
-			}
 			#ifdef USE_SOUND 
 				//fmod_playsound(0);
-				fmod_playsound(1);
+				fmod_playsound(0);
 			#endif //USE_SOUND
+				
+			}
+			play_sounds ^= 1;
 			break;
 		case XK_w:
 			if (shift) {

@@ -130,3 +130,14 @@ int fmod_cleanup(void)
 	return 0;
 }
 
+int fmod_cleanupIntro(int i)
+{
+	int result = FMOD_Sound_Release(sound[i]);
+	nsounds--;
+	if (ERRCHECK(result)) {
+		return 1;
+	}
+	return 0;
+}
+
+

@@ -1,6 +1,6 @@
 CFLAGS = -I ./include
 LIB    = ./lib/fmod/libfmodex64.so ./libggfonts.so
-LFLAGS = $(LIB) -lrt -lX11 -lGLU -lGL -pthread -lm #-lXrandr
+LFLAGS = $(LIB) -lrt -lX11 -lGLU -lSOIL -lGL -pthread -lm #-lXrandr
 
 all: space
 

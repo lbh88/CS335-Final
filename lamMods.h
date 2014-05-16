@@ -5,5 +5,6 @@ typedef double Vec[3];
 
 extern void dispShip(Ship ship, GLuint shipTexture);
 extern void dispBG(GLuint shipTexture);
+extern void buildShipImage();
 
 #endif

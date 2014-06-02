@@ -105,6 +105,15 @@ int play_sounds = 0;
 #endif //USE_SOUND
 //
 
+typedef struct t_stats {
+	int health;
+	int moveSpeed;
+	int fireSpeed;
+	int damage;
+	int upgrades[10];
+} Stats;
+Stats stats;
+
 typedef struct t_raindrop {
   int type;
   int linewidth;
@@ -403,6 +412,7 @@ void init_sounds(void)
 }
 
 void init() {
+	initStats();
 #ifdef USE_SHIP
 	ship.pos[0] = 320.0;
 	ship.pos[1] = (double)(yres-400);
@@ -412,6 +422,7 @@ void init() {
 	ship.radius = (float)ship.width2;
 	ship.shape = 1; //SHIP_FLAT;
 #endif //USE_SHIP
+	clock_gettime(CLOCK_REALTIME, &bulletTimer);
 	memset(keys, 0, 65536);
 }
 
@@ -788,54 +799,54 @@ void physics(void)
   //Update ship position
 	if (keys[XK_Left])
 	{
-      ship.pos[0] = ( ship.pos[0] <= 0 ? ship.pos[0]: ship.pos[0]-5.0);
+      ship.pos[0] = ( ship.pos[0] <= 0 ? ship.pos[0]: ship.pos[0]-1.0*stats.moveSpeed);
     }
     else if (keys[XK_Right])
     {
 	//	VecCopy(ship.pos, ship.lastpos);
-		ship.pos[0] = ( ship.pos[0] >= xres ? ship.pos[0]: ship.pos[0]+5.0);
+		ship.pos[0] = ( ship.pos[0] >= xres ? ship.pos[0]: ship.pos[0]+1.0*stats.moveSpeed);
 	}	
     if (keys[XK_Up])
     {
     //  VecCopy(ship.pos, ship.lastpos);
-      ship.pos[1] = ( ship.pos[1] >= yres ? ship.pos[1]: ship.pos[1]+5.0);
+      ship.pos[1] = ( ship.pos[1] >= yres ? ship.pos[1]: ship.pos[1]+1.0*stats.moveSpeed);
     }
     if (keys[XK_Down])
     {
     //  VecCopy(ship.pos, ship.lastpos);
-      ship.pos[1] = ( ship.pos[1] <= 0 ? ship.pos[1] : ship.pos[1]-5.0);
+      ship.pos[1] = ( ship.pos[1] <= 0 ? ship.pos[1] : ship.pos[1]-1.0*stats.moveSpeed);
     }
     if (keys[XK_space])
     {
-				  //shipShootBullet(ship);
-		 /* clock_gettime(CLOCK_REALTIME, &bt);
-		  if (ts > 0.15) {*/
-			//timeCopy(&bulletTimer, &bt);
-			//shoot a bullet...
-			Bullet *b = (Bullet *)malloc(sizeof(Bullet));
-			//timeCopy(&b->time, &bt);
-			b->pos[0] = ship.pos[0];
-			b->pos[1] = ship.pos[1];
-			b->vel[0] = ship.vel[0];
-			b->vel[1] = ship.vel[1];
-			//convert ship angle to radians
-			Flt rad = ((ship.angle+90.0) / 360.0f) * PI * 2.0;
-			//convert angle to a vector
-			Flt xdir = cos(rad);
-			Flt ydir = sin(rad);
-			b->pos[0] += xdir*20.0f;
-			b->pos[1] += ydir*20.0f;
-			b->vel[0] += xdir*6.0f + rnd()*0.1;
-			b->vel[1] += ydir*6.0f + rnd()*0.1;
-			b->color[0] = 1.0f;
-			b->color[1] = 1.0f;
-			b->color[2] = 1.0f;
-			//put bullet into linked list
-			b->prev = NULL;
-			b->next = bhead;
-			if (bhead != NULL)
-			  bhead->prev = b;
-			bhead = b;
+			double bt = timeDiff(&bulletTimer, &timeCurrent);
+			if ( bt > .3*stats.fireSpeed) {
+				clock_gettime(CLOCK_REALTIME, &bulletTimer);
+				//shoot a bullet...
+				Bullet *b = (Bullet *)malloc(sizeof(Bullet));
+				//timeCopy(&b->time, &bt);
+				b->pos[0] = ship.pos[0];
+				b->pos[1] = ship.pos[1];
+				b->vel[0] = ship.vel[0];
+				b->vel[1] = ship.vel[1];
+				//convert ship angle to radians
+				Flt rad = ((ship.angle+90.0) / 360.0f) * PI * 2.0;
+				//convert angle to a vector
+				Flt xdir = cos(rad);
+				Flt ydir = sin(rad);
+				b->pos[0] += xdir*20.0f;
+				b->pos[1] += ydir*20.0f;
+				b->vel[0] += xdir*6.0f + rnd()*0.1;
+				b->vel[1] += ydir*6.0f + rnd()*0.1;
+				b->color[0] = 1.0f;
+				b->color[1] = 1.0f;
+				b->color[2] = 1.0f;
+				//put bullet into linked list
+				b->prev = NULL;
+				b->next = bhead;
+				if (bhead != NULL)
+				  bhead->prev = b;
+				bhead = b;
+			}
 	}
   //Check for collision with window edges
   if (ship.pos[0] < 0.0) {

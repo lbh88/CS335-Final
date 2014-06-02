@@ -31,6 +31,7 @@ GLuint silhouetteTexture;
 Ppmimage *introImage=NULL;
 Ppmimage *shipImage;
 int keys[65536];
+Stats stats;
 
 unsigned char *buildAlphaData(Ppmimage *img);
 
@@ -42,6 +43,14 @@ typedef struct t_ship {
   float width2;
   float radius;
 } Ship;
+
+typedef struct t_stats {
+	int health;
+	int moveSpeed;
+	int fireSpeed;
+	int damage;
+	int upgrades[10];
+} Stats;
 
 typedef double Vec[3];
 
@@ -156,6 +165,14 @@ void buildShipImage()
 							GL_RGBA, GL_UNSIGNED_BYTE, silhouetteData);
 	free(silhouetteData);
 
+}
+
+void initStats()
+{
+	stats.health = 5;
+	stats.moveSpeed = 3;
+	stats.fireSpeed=1;
+	stats.damage = 1;
 }
 
 

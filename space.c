@@ -173,6 +173,7 @@ Enemy enemy;
 int show_enemy = 0;
 void buildEnemyImage();
 void dispEnemy(Enemy enemy, GLuint enemyTexture); 
+void checkMovement(int x, int y);
 
 typedef struct t_bullet {
   Vec pos;
@@ -797,25 +798,7 @@ void physics(void)
     check_enemies();
   }
   //Update ship position
-	if (keys[XK_Left])
-	{
-      ship.pos[0] = ( ship.pos[0] <= 0 ? ship.pos[0]: ship.pos[0]-1.0*stats.moveSpeed);
-    }
-    else if (keys[XK_Right])
-    {
-	//	VecCopy(ship.pos, ship.lastpos);
-		ship.pos[0] = ( ship.pos[0] >= xres ? ship.pos[0]: ship.pos[0]+1.0*stats.moveSpeed);
-	}	
-    if (keys[XK_Up])
-    {
-    //  VecCopy(ship.pos, ship.lastpos);
-      ship.pos[1] = ( ship.pos[1] >= yres ? ship.pos[1]: ship.pos[1]+1.0*stats.moveSpeed);
-    }
-    if (keys[XK_Down])
-    {
-    //  VecCopy(ship.pos, ship.lastpos);
-      ship.pos[1] = ( ship.pos[1] <= 0 ? ship.pos[1] : ship.pos[1]-1.0*stats.moveSpeed);
-    }
+	checkMovement(xres, yres);
     if (keys[XK_space])
     {
 			double bt = timeDiff(&bulletTimer, &timeCurrent);

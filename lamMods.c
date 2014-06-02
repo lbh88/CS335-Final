@@ -32,6 +32,7 @@ Ppmimage *introImage=NULL;
 Ppmimage *shipImage;
 int keys[65536];
 Stats stats;
+Ship ship;
 
 unsigned char *buildAlphaData(Ppmimage *img);
 
@@ -175,4 +176,32 @@ void initStats()
 	stats.damage = 1;
 }
 
-
+void checkMovement(int x, int y)
+{
+	if (keys[XK_Left])
+	{
+		ship.pos[0] = ship.pos[0]-1.0*stats.moveSpeed;
+		if (ship.pos[0] <= 0)
+			ship.pos[0] = 0;
+    }
+    else if (keys[XK_Right])
+    {
+	//	VecCopy(ship.pos, ship.lastpos);
+		ship.pos[0] = ship.pos[0]+1.0*stats.moveSpeed;
+		if (ship.pos[0] >= xres )
+			ship.pos[0] = xres;
+	}	
+    if (keys[XK_Up])
+    {
+    //  VecCopy(ship.pos, ship.lastpos);
+		ship.pos[1] = ship.pos[1]+1.0*stats.moveSpeed;
+		if (ship.pos[1] >= yres )
+			ship.pos[1] = yres;
+    }
+    if (keys[XK_Down])
+    {
+		ship.pos[1] = ship.pos[1]-1.0*stats.moveSpeed;
+		if (ship.pos[1] <= 0)
+			ship.pos[1] = 0;
+    }
+}

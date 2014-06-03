@@ -33,6 +33,9 @@ Ppmimage *shipImage;
 int keys[65536];
 Stats stats;
 Ship ship;
+struct timespec shipAnimation;
+struct timespec timeCurrent;
+double timeDiff(struct timespec *start, struct timespec *end);
 
 unsigned char *buildAlphaData(Ppmimage *img);
 
@@ -144,7 +147,22 @@ void dispIntro()
 
 void buildShipImage()
 {	
-	shipImage     = ppm6GetImage("./images/spaceship.ppm");
+	double sa =timeDiff(&shipAnimation,&timeCurrent);
+	sa = sa*10;
+	int saTime = (int) sa;
+	saTime = saTime%3;
+	switch (saTime)
+	{
+		case 0:
+			shipImage  = ppm6GetImage("./images/spaceship.ppm");
+			break;
+		case 1:
+			shipImage  = ppm6GetImage("./images/spaceship1.ppm");
+			break;
+		case 2:
+			shipImage  = ppm6GetImage("./images/spaceship2.ppm");
+			break;
+	}
 	//
 	//create opengl texture elements
 	glGenTextures(1, &shipTexture);
@@ -176,7 +194,7 @@ void initStats()
 	stats.damage = 1;
 }
 
-void checkMovement(int x, int y)
+void checkMovement()
 {
 	if (keys[XK_Left])
 	{

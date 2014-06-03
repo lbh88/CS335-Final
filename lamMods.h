@@ -11,6 +11,6 @@ extern void intro();
 extern void dispIntro();
 extern void endIntroSong();
 extern void initStats();
-extern void checkMovement(int x, int y);
+extern void checkMovement();
 
 #endif

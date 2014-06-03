@@ -76,6 +76,7 @@ const double physicsRate = 1.0 / 60.0;
 const double oobillion = 1.0 / 1e9;
 struct timespec timeStart, timeCurrent;
 struct timespec timePause;
+struct timespec shipAnimation;
 double physicsCountdown=0.0;
 double timeSpan=0.0;
 double timeDiff(struct timespec *start, struct timespec *end) {
@@ -94,7 +95,7 @@ int keys[65536];
 
 Ppmimage *enemyImage=NULL;
 GLuint enemyTexture;
-Ppmimage *shipImage=NULL;
+Ppmimage *shipImage;
 Ppmimage *backgroundImage=NULL;
 GLuint shipTexture;
 GLuint backgroundTexture;
@@ -195,6 +196,7 @@ int main(void)
   intro();
   clock_gettime(CLOCK_REALTIME, &timePause);
   clock_gettime(CLOCK_REALTIME, &timeStart);
+  clock_gettime(CLOCK_REALTIME, &shipAnimation);
   while(!done) {
     while(XPending(dpy)) {
       XEvent e;

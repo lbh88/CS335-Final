@@ -71,7 +71,7 @@ void intro()
 		printf("ERROR - fmod_init()\n\n");
 		return;
 	}
-	if (fmod_createsound("./sounds/burn1.wav", 0)) {
+	if (fmod_createsound("./sounds/burn1.mp3", 0)) {
 		printf("ERROR - fmod_createsound()\n\n");
 		return;
 	}

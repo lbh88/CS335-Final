@@ -403,7 +403,7 @@ void init_sounds(void)
     printf("ERROR - fmod_init()\n\n");
     return;
   }
-  if (fmod_createsound("./sounds/burn2.wav", 0)) {
+  if (fmod_createsound("./sounds/burn2.mp3", 0)) {
     printf("ERROR - fmod_createsound()\n\n");
     return;
   }

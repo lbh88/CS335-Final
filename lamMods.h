@@ -5,7 +5,7 @@ typedef double Vec[3];
 typedef struct t_stats Stats;
 
 extern void dispShip(Ship ship, GLuint shipTexture);
-extern void dispBG(GLuint shipTexture);
+extern void dispBG();
 extern void buildShipImage();
 extern void intro();
 extern void dispIntro();

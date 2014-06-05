@@ -157,12 +157,12 @@ void enemyShootBullet() {
 
 void check_enemies() {
   if(enemy.pos[1] > (double)(yres)-600) {
-    enemy.pos[1] = enemy.pos[1]- (2.5 + stats.moveSpeed/10);
+    enemy.pos[1] = enemy.pos[1]- (2.5 + .2*stats.moveSpeed);
     enemyMovement();
     dispEnemy(enemy, enemyTexture);
   }
   double at = timeDiff(&enemyBulletTimer, &timeCurrent);
-  if(at > 1.5 - stats.fireSpeed/10) {
+  if(at > 1.5 - .2*stats.fireSpeed) {
     clock_gettime(CLOCK_REALTIME, &enemyBulletTimer);
     enemyShootBullet();
   }
@@ -229,14 +229,13 @@ void updateBulletPos() {
     }
     if (b->pos[0] >= enemy.pos[0]-20 && b->pos[0] <= enemy.pos[0]+20
         && b->pos[1] >= enemy.pos[1]-30 && b->pos[1] <= enemy.pos[1]+30) {
+		if (play_sounds)
+			fmod_playsound(3);
       deleteBullet(b);
       deleteEnemy();
       kills++;
       checkUpgrades();
-      if (play_sounds)
-		fmod_playsound(3);
       
-		  
     }
     b = b->next;
   }

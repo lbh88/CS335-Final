@@ -35,6 +35,8 @@ GLuint shipTexture;
 GLuint introTexture;
 GLuint gameOverTexture;
 GLuint silhouetteTexture;
+GLuint backgroundTexture;
+GLuint backgroundTexture2;
 Ppmimage *introImage=NULL;
 Ppmimage *gameOverImage=NULL;
 Ppmimage *shipImage;
@@ -63,6 +65,9 @@ typedef struct t_ship {
   float width2;
   float radius;
 } Ship;
+
+Vec bgPos1;
+Vec bgPos2;
 
 typedef struct t_stats {
 	int health;
@@ -108,6 +113,13 @@ void intro()
 			//fmod_playsound(0);
 			fmod_playsound(0);
 //		#endif //USE_SOUND
+	bgPos1[0]= xres/2;
+	bgPos1[1]= yres/2;
+	bgPos1[2]= 0;
+	bgPos2[0]= xres/2;
+	bgPos2[1]= yres + yres/2;
+	bgPos2[2]= 0;
+	
 }
 
 void endIntroSong()
@@ -125,19 +137,46 @@ void dispShip(Ship ship, GLuint shipTexture)
 	glPopMatrix();
 }
 
-void dispBG(GLuint backgroundTexture)
+void dispBG()
 {
+
 	glBindTexture(GL_TEXTURE_2D, backgroundTexture);
 	glBegin(GL_QUADS);
-		glTexCoord2f(0.0f, 1.0f); glVertex2i(0,0);
-		glTexCoord2f(0.0f, 0.0f); glVertex2i(0, yres);
-		glTexCoord2f(1.0f, 0.0f); glVertex2i(xres, yres);
-		glTexCoord2f(1.0f, 1.0f); glVertex2i(xres, 0);
+		glTexCoord2f(0.0f, 1.0f); glVertex2i(bgPos1[0]-xres/2, bgPos1[1]-yres/2);
+		glTexCoord2f(0.0f, 0.0f); glVertex2i(bgPos1[0]-xres/2, bgPos1[1]+yres/2);
+		glTexCoord2f(1.0f, 0.0f); glVertex2i(bgPos1[0]+xres/2, bgPos1[1]+yres/2);
+		glTexCoord2f(1.0f, 1.0f); glVertex2i(bgPos1[0]+xres/2, bgPos1[1]-yres/2);
 	glEnd();
 	glBindTexture(GL_TEXTURE_2D, silhouetteTexture);
 	glEnable(GL_ALPHA_TEST);
 	glAlphaFunc(GL_GREATER, 0.0f);
 	glColor4ub(255,255,255,255);
+	
+	glBindTexture(GL_TEXTURE_2D, backgroundTexture2);
+	glBegin(GL_QUADS);
+		glTexCoord2f(0.0f, 1.0f); glVertex2i(bgPos2[0]-xres/2, bgPos2[1]-yres/2);
+		glTexCoord2f(0.0f, 0.0f); glVertex2i(bgPos2[0]-xres/2, bgPos2[1]+yres/2);
+		glTexCoord2f(1.0f, 0.0f); glVertex2i(bgPos2[0]+xres/2, bgPos2[1]+yres/2);
+		glTexCoord2f(1.0f, 1.0f); glVertex2i(bgPos2[0]+xres/2, bgPos2[1]-yres/2);
+	glEnd();
+	glBindTexture(GL_TEXTURE_2D, silhouetteTexture);
+	glEnable(GL_ALPHA_TEST);
+	glAlphaFunc(GL_GREATER, 0.0f);
+	glColor4ub(255,255,255,255);
+	
+	bgPos1[1] = bgPos1[1] - (.05* stats.moveSpeed);
+	bgPos2[1] = bgPos2[1] - (.05* stats.moveSpeed);
+	
+	if (bgPos1[1] < (0-yres/2))
+	{
+		bgPos1[1]= yres + yres/2;
+	}
+	if (bgPos2[1] < (0-yres/2))
+	{
+		bgPos2[1]= yres + yres/2;
+	}
+	
+
 }
 
 void dispIntro()
@@ -495,6 +534,7 @@ void checkDeath()
 void restartGame()
 {
 	deathTime = 0.0;
+	kills = 0;
 	fmod_cleanupIntro(0);
 	fmod_cleanupIntro(4);
 	ship.pos[0] = 320.0;
@@ -504,7 +544,7 @@ void restartGame()
 	enemy.pos[1] = (double)(yres)+50;
 	init_music();
 	fmod_playsound(0);
-	stats.health = 5;
+	initStats();
 	show_enemy ^= 1;
 	show_ship ^= 1;
 	dead ^= 1;

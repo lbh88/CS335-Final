@@ -101,6 +101,7 @@ Ppmimage *shipImage;
 Ppmimage *backgroundImage=NULL;
 GLuint shipTexture;
 GLuint backgroundTexture;
+GLuint backgroundTexture2;
 GLuint silhouetteTexture;
 int show_rain=0;
 #ifdef USE_SOUND
@@ -380,20 +381,15 @@ void init_opengl(void)
   //create opengl texture elements
   //glGenTextures(1, &shipTexture);
   glGenTextures(1, &backgroundTexture);
-  //-------------------------------------------------------------------------
-  //
-  //ship
-  //
-  //glBindTexture(GL_TEXTURE_2D, shipTexture);
-  //
-  //glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
-  //glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
-  //glTexImage2D(GL_TEXTURE_2D, 0, 3, shipImage->width, shipImage->height , 0, GL_RGB, GL_UNSIGNED_BYTE,shipImage->data);
-  //
-  //-------------------------------------------------------------------------
-  //
-  //Background
   glBindTexture(GL_TEXTURE_2D, backgroundTexture);
+  //
+  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+  glTexImage2D(GL_TEXTURE_2D, 0, 3, backgroundImage->width, backgroundImage->height, 0, GL_RGB, GL_UNSIGNED_BYTE, backgroundImage->data);
+  
+  backgroundImage	= ppm6GetImage("./images/stars.ppm");
+  glGenTextures(1, &backgroundTexture2);
+  glBindTexture(GL_TEXTURE_2D, backgroundTexture2);
   //
   glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
@@ -658,7 +654,7 @@ void render(void)
   //	float wid = 120.0f;
   glColor3f(1.0, 1.0, 1.0);
   if (bg) {
-    dispBG(backgroundTexture);
+    dispBG();
   }
   if (show_ship) {
     dispShip(ship, shipTexture);

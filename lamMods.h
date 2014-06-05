@@ -12,5 +12,11 @@ extern void dispIntro();
 extern void endIntroSong();
 extern void initStats();
 extern void checkMovement();
+extern void checkUpgrades();
+extern void enemyMovement();
+extern void gameOver();
+extern void restartGame();
+extern void dispGameOver();
+extern void checkDeath();
 
 #endif

@@ -14,5 +14,6 @@ extern void initBullet();
 extern void deleteBullet(Bullet *node);
 extern void buildEnemyImage();
 extern void displayEnemy(Enemy enemy, GLuint enemyTexture);
+extern void updateEnemyBulletPos();
 
 #endif

@@ -65,6 +65,8 @@ void init();
 void init_sounds(void);
 void physics(void);
 void render(void);
+void checkUpgrades(void);
+void updateEnemyBulletPos(void);
 //void dispBG(void);
 //void dispShip(void);
 
@@ -90,6 +92,8 @@ int done=0;
 int xres=800, yres=600;
 int kills = 0;
 int keys[65536];
+int dead = 0;
+double deathTime;
 
 Ppmimage *enemyImage=NULL;
 GLuint enemyTexture;
@@ -175,7 +179,7 @@ Enemy enemy;
 int show_enemy = 0;
 void buildEnemyImage();
 void dispEnemy(Enemy enemy, GLuint enemyTexture); 
-void checkMovement(int x, int y);
+void checkMovement();
 
 typedef struct t_bullet {
   Vec pos;
@@ -188,12 +192,15 @@ typedef struct t_bullet {
 Bullet *bhead=NULL;
 void deleteBullet(Bullet *node);
 struct timespec bulletTimer;
+struct timespec deathTimer;
+
 int main(void)
 {
   logOpen();
   initXWindows();
   init_opengl();
   init();
+  gameOver();
   intro();
   clock_gettime(CLOCK_REALTIME, &timePause);
   clock_gettime(CLOCK_REALTIME, &timeStart);
@@ -214,7 +221,17 @@ int main(void)
       physics();
       physicsCountdown -= physicsRate;
     }
-    disp_intro? render() : dispIntro();
+    if (disp_intro) 
+    {
+		if(!dead)
+			render();
+		else
+			dispGameOver();
+	}
+	else
+	{
+		 dispIntro();
+	}
     glXSwapBuffers(dpy, win);
   }
   cleanupXWindows();
@@ -236,7 +253,7 @@ void set_title(void)
 {
   //Set the window title bar.
   XMapWindow(dpy, win);
-  XStoreName(dpy, win, "CS335 - Space");
+  XStoreName(dpy, win, "Space Raid");
 }
 
 void setup_screen_res(const int w, const int h)
@@ -396,24 +413,6 @@ void check_resize(XEvent *e)
   }
 }
 
-void init_sounds(void)
-{
-#ifdef USE_SOUND
-  //FMOD_RESULT result;
-  if (fmod_init()) {
-    printf("ERROR - fmod_init()\n\n");
-    return;
-  }
-  if (fmod_createsound("./sounds/burn2.mp3", 0)) {
-    printf("ERROR - fmod_createsound()\n\n");
-    return;
-  }
-  fmod_setmode(0,FMOD_LOOP_NORMAL);
-  //fmod_playsound(0);
-  //fmod_playsound(1);
-  //fmod_systemupdate();
-#endif //USE_SOUND
-}
 
 void init() {
 	initStats();
@@ -481,6 +480,12 @@ void check_keys(XEvent *e)
 	}
 	  //
 	  switch(key) {
+		case XK_c:
+		  if (dead){
+			  restartGame();
+		  }
+		break;
+		  
 		case XK_u:
 		  show_ship ^= 1;
 		  break;
@@ -554,232 +559,17 @@ void normalize(Vec vec)
   vec[2] = zlen * len;
 }
 
-void cleanup_raindrops(void)
-{
-  Raindrop *s;
-  while(ihead) {
-    s = ihead->next;
-    free(ihead);
-    ihead = s;
-  }
-  ihead=NULL;
-}
-
-void delete_rain(Raindrop *node)
-{
-  if((node->next == NULL) && (node->prev == NULL)) {
-    ihead = NULL;
-    free(node);
-    node = NULL;
-  }
-
-  else if((node->next != NULL) && (node->prev == NULL)) {
-    Raindrop *tmp = node->next;
-    tmp->prev = NULL;
-    ihead = node->next;
-    free(node);
-    node = NULL;
-  }
-
-  else if((node->next == NULL) && (node->prev != NULL)) {
-    Raindrop *tmp = node->prev;
-    tmp->next = NULL;
-    free(node);
-    node = NULL;
-  }
-
-  else {
-    Raindrop *tmp1, *tmp2;
-    tmp1 = node->next;
-    tmp2 = node->prev;
-    tmp1->prev = tmp2;
-    tmp2->next = tmp1;
-    free(node);
-    node = NULL;
-  }
-  //remove the node from the linked list
-}
-
-void create_raindrop()
-{
-    Raindrop *node = (Raindrop *)malloc(sizeof(Raindrop));
-    if (node == NULL) {
-      Log("error allocating node.\n");
-      exit(EXIT_FAILURE);
-    }
-    node->prev = NULL;
-    node->next = NULL;
-    node->sound=0;
-    node->pos[0] = rnd() * (float)xres;
-    node->pos[1] = rnd() * 100.0f + (float)yres;
-    VecCopy(node->pos, node->lastpos);
-    node->vel[0] = 
-      node->vel[1] = 0.0f;
-    node->color[0] = /*rnd() * */ 0.05f + 0.95f;
-    node->color[1] = /*rnd() * */0.05f + 0.95f;
-    node->color[2] = /*rnd() * */ 0.05f + 0.95f;
-    node->color[3] = /*rnd() * */0.2f + 0.3f; //alpha
-    node->linewidth = /*random(8)+1*/8;
-    //larger linewidth = faster speed
-    node->maxvel[1] = (float)(node->linewidth*16);
-    node->length = node->maxvel[1] * 0.2f;// + rnd();
-    //
-    node->lower_boundry = 0/*rnd() * 100.0*/;
-    //
-    //put raindrop into linked list
-    node->next = ihead;
-    if (ihead != NULL)
-      ihead->prev = node;
-    ihead = node;
-    ++totrain;
-}
-
-void check_raindrops()
-{
-  if (kills > 20 ) {
-    if (random(100) < 50) {
-      create_raindrop(ndrops);
-    }
-  }
-  else if (kills > 40 ) {
-    if (random(100) < 30) {
-      create_raindrop(ndrops);
-    }
-  }
-  else {
-    if (random(100) < 70) {
-      create_raindrop(ndrops);
-    }
-  }
-
-  //
-  //move rain droplets
-  Raindrop *node = ihead;
-  while(node) {
-    //force is toward the ground
-    node->vel[1] += gravity;
-    VecCopy(node->pos, node->lastpos);
-    if (node->pos[1] > node->lower_boundry) {
-      node->pos[0] += node->vel[0] * timeslice;
-      node->pos[1] += node->vel[1] * timeslice;
-    }
-    if (node->pos[1] <= node->lower_boundry) {
-      Raindrop *savenode = node->next;
-      delete_rain(node);
-      node = savenode;
-      continue;
-    }
-    /*if (fabs(node->vel[1]) > node->maxvel[1])
-      node->vel[1] *= 0.96;
-    node->vel[0] *= 0.999;
-    // */
-    node = node->next;
-  }
-  //}
-  //
-  //check rain droplets
-int n=0;
-node = ihead;
-while(node) {
-  n++;
-#ifdef USE_SOUND
-  if (node->pos[1] < 0.0f) {
-    //raindrop hit ground
-    if (!node->sound && play_sounds) {
-      //small chance that a sound will play
-      int r = random(50);
-      if (r==1)
-        fmod_playsound(0);
-      //if (r==2)
-      //	fmod_playsound(1);
-      //sound plays once per raindrop
-      node->sound=1;
-    }
-  }
-#endif //USE_SOUND
-#ifdef USE_SHIP
-  //collision detection for raindrop on ship
-  if (show_ship) {
-    if (ship.shape == SHIP_FLAT) {
-      if (node->pos[0] >= (ship.pos[0] - ship.width2) &&
-          node->pos[0] <= (ship.pos[0] + ship.width2)) {
-        if (node->lastpos[1] > ship.lastpos[1] ||
-            node->lastpos[1] > ship.pos[1]) {
-          if (node->pos[1] <= ship.pos[1] ||
-              node->pos[1] <= ship.lastpos[1]) {
-            if (node->linewidth > 1) {
-              Raindrop *savenode = node->next;
-              delete_rain(node);
-              node = savenode;
-              continue;
-            }
-          }
-        }
-      }
-    }
-    if (ship.shape == SHIP_ROUND) {
-      float d0 = node->pos[0] - ship.pos[0];
-      float d1 = node->pos[1] - ship.pos[1];
-      float distance = sqrt((d0*d0)+(d1*d1));
-      //Log("distance: %f	ship.radius: %f\n",
-      //							distance,ship.radius);
-      if (distance <= ship.radius &&
-          node->pos[1] > ship.pos[1]) {
-        if (node->linewidth > 1) {
-          if (deflection) {
-            //deflect raindrop
-            double dot;
-            Vec v, up = {0,1,0};
-            VecSub(node->pos, ship.pos, v);
-            normalize(v);
-            node->pos[0] =
-              ship.pos[0] + v[0] * ship.radius;
-            node->pos[1] =
-              ship.pos[1] + v[1] * ship.radius;
-            dot = VecDot(v,up);
-            dot += 1.0;
-            node->vel[0] += v[0] * dot * 1.0;
-            node->vel[1] += v[1] * dot * 1.0;
-          } else {
-            Raindrop *savenode = node->next;
-            delete_rain(node);
-            node = savenode;
-            continue;
-          }
-        }
-      }
-    }
-    //VecCopy(ship.pos, ship.lastpos);
-  }
-#endif //USE_SHIP
-  if (node->pos[1] < -20.0f) {
-    //rain drop is below the visible area
-    Raindrop *savenode = node->next;
-    delete_rain(node);
-    node = savenode;
-    continue;
-  }
-  //if (node->next == NULL) break;
-  node = node->next;
-}
-if (maxrain < n)
-  maxrain = n;
-  //}
-  }
 
 void physics(void)
 {
 	//Update ship position
 
-  if (show_rain) {
-    check_raindrops();
-  }
-
   if (show_enemy) {
     check_enemies();
   }
   //Update ship position
-	checkMovement(xres, yres);
+  if(stats.health > 0 && disp_intro)
+	checkMovement();
   //Check for collision with window edges
   if (ship.pos[0] < 0.0) {
     ship.pos[0] += (Flt)xres;
@@ -797,6 +587,7 @@ void physics(void)
   //
   //Update bullet positions
   updateBulletPos();
+  updateEnemyBulletPos();
   
 }
 
@@ -873,7 +664,7 @@ void render(void)
     dispShip(ship, shipTexture);
   }
   if (show_enemy) {
-    check_enemies();
+    dispEnemy(enemy, enemyTexture);
   }
 
   glDisable(GL_TEXTURE_2D);
@@ -897,8 +688,7 @@ void render(void)
     draw_ship();
 #endif //USE_SHIP
   if (show_enemy)
-    dispEnemy(enemy, enemyTexture);
-    
+    draw_enemy();
   glBindTexture(GL_TEXTURE_2D, 0);
   //
   //
@@ -909,26 +699,15 @@ void render(void)
   ggprint8b(&r, 16, cref, "U - Display Unit");
   ggprint8b(&r, 16, cref, "B - Display Background");
   ggprint8b(&r, 16, cref, "S - Play music");
-  ggprint8b(&r, 16, cref, "Kills: ");
+  ggprint8b(&r, 16, cref, "Space - Fire");
+  
+  r.bot = yres - 20;
+  r.left = xres-100;
+  r.center = 0;
+  ggprint8b(&r, 16, cref, "Health: %d", stats.health);
+  ggprint8b(&r, 16, cref, "Speed: %d", stats.moveSpeed);
+  ggprint8b(&r, 16, cref, "Fire Rate: %d", stats.fireSpeed);
+  ggprint8b(&r, 16, cref, "Kills: %d", kills);
 
-  {
-    Bullet *b = bhead;
-    while(b) {
-      glColor3f(1.0, 1.0, 1.0);
-      glBegin(GL_POINTS);
-      glVertex2f(b->pos[0],      b->pos[1]);
-      glVertex2f(b->pos[0]-1.0f, b->pos[1]);
-      glVertex2f(b->pos[0]+1.0f, b->pos[1]);
-      glVertex2f(b->pos[0],      b->pos[1]-1.0f);
-      glVertex2f(b->pos[0],      b->pos[1]+1.0f);
-      glColor3f(0.8, 0.8, 0.8);
-      glVertex2f(b->pos[0]-1.0f, b->pos[1]-1.0f);
-      glVertex2f(b->pos[0]-1.0f, b->pos[1]+1.0f);
-      glVertex2f(b->pos[0]+1.0f, b->pos[1]-1.0f);
-      glVertex2f(b->pos[0]+1.0f, b->pos[1]+1.0f);
-      glEnd();
-      b = b->next;
-    }
-
-  }
+  initBullet();
 }

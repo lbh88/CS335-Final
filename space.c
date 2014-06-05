@@ -1,7 +1,5 @@
+//Lam Ha & Nicholas Jones
 //cs335 Spring 2014
-//
-//program: lab2_rainforest.c
-//author:	Gordon Griesel
 //date:		2014
 //
 //
@@ -72,7 +70,7 @@ void render(void);
 
 //-----------------------------------------------------------------------------
 //Setup timers
-const double physicsRate = 1.0 / 60.0;
+const double physicsRate = 1.0 / 90.0;
 const double oobillion = 1.0 / 1e9;
 struct timespec timeStart, timeCurrent;
 struct timespec timePause;
@@ -162,6 +160,9 @@ int disp_intro = 0;
 
 typedef struct t_enemy {
   int shape;
+  int fireSpeed;
+  int moveSpeed;
+  GLuint enemyTexture;
   Vec pos;
   Vec lastpos;
   Vec vel;
@@ -427,6 +428,8 @@ void init() {
 #endif //USE_SHIP
 	clock_gettime(CLOCK_REALTIME, &bulletTimer);
 	memset(keys, 0, 65536);
+	initEnemy();
+	initBullet();
 }
 
 void check_mouse(XEvent *e)
@@ -493,24 +496,6 @@ void check_keys(XEvent *e)
 		case XK_e:
 		  show_enemy ^= 1;
 		  break; 
-		/*
-		case XK_Left:
-		  VecCopy(ship.pos, ship.lastpos);
-		  ship.pos[0] = ( ship.pos[0] <= 0 ? ship.pos[0]: ship.pos[0]-5.0);
-		  break;
-		case XK_Right:
-		  VecCopy(ship.pos, ship.lastpos);
-		  ship.pos[0] = ( ship.pos[0] >= xres ? ship.pos[0]: ship.pos[0]+5.0);
-		  break;
-		case XK_Up:
-		  VecCopy(ship.pos, ship.lastpos);
-		  ship.pos[1] = ( ship.pos[1] >= yres ? ship.pos[1]: ship.pos[1]+5.0);
-		  break;
-		case XK_Down:
-		  VecCopy(ship.pos, ship.lastpos);
-		  ship.pos[1] = ( ship.pos[1] <= 0 ? ship.pos[1] : ship.pos[1]-5.0);
-		  break;
-		  */
 		case XK_equal:
 		  if (++ndrops > 60)
 			ndrops=60;
@@ -532,7 +517,6 @@ void check_keys(XEvent *e)
 			//fmod_playsound(0);
 			fmod_playsound(0);
 	#endif //USE_SOUND
-
 		  }
 		  play_sounds ^= 1;
 		  break;
@@ -648,11 +632,6 @@ void create_raindrop()
       ihead->prev = node;
     ihead = node;
     ++totrain;
-}
-void check_enemies() {
-  while(enemy.pos[1] < yres) {
-    enemy.pos[1] += 5;
-  }
 }
 
 void check_raindrops()
@@ -801,38 +780,6 @@ void physics(void)
   }
   //Update ship position
 	checkMovement(xres, yres);
-    if (keys[XK_space])
-    {
-			double bt = timeDiff(&bulletTimer, &timeCurrent);
-			if ( bt > .3*stats.fireSpeed) {
-				clock_gettime(CLOCK_REALTIME, &bulletTimer);
-				//shoot a bullet...
-				Bullet *b = (Bullet *)malloc(sizeof(Bullet));
-				//timeCopy(&b->time, &bt);
-				b->pos[0] = ship.pos[0];
-				b->pos[1] = ship.pos[1];
-				b->vel[0] = ship.vel[0];
-				b->vel[1] = ship.vel[1];
-				//convert ship angle to radians
-				Flt rad = ((ship.angle+90.0) / 360.0f) * PI * 2.0;
-				//convert angle to a vector
-				Flt xdir = cos(rad);
-				Flt ydir = sin(rad);
-				b->pos[0] += xdir*20.0f;
-				b->pos[1] += ydir*20.0f;
-				b->vel[0] += xdir*6.0f + rnd()*0.1;
-				b->vel[1] += ydir*6.0f + rnd()*0.1;
-				b->color[0] = 1.0f;
-				b->color[1] = 1.0f;
-				b->color[2] = 1.0f;
-				//put bullet into linked list
-				b->prev = NULL;
-				b->next = bhead;
-				if (bhead != NULL)
-				  bhead->prev = b;
-				bhead = b;
-			}
-	}
   //Check for collision with window edges
   if (ship.pos[0] < 0.0) {
     ship.pos[0] += (Flt)xres;
@@ -849,38 +796,8 @@ void physics(void)
   //
   //
   //Update bullet positions
-  struct timespec bt;
-  clock_gettime(CLOCK_REALTIME, &bt);
-  Bullet *b = bhead;
-  while(b) {
-    /*double ts = timeDiff(&b->time, &bt);
-    if (ts > 1.8) {
-      Bullet *saveb = b->next;
-      deleteBullet(b);
-      b = saveb;
-      continue;
-    }*/
-    b->pos[0] += b->vel[0];
-    b->pos[1] += b->vel[1];
-    //Check for collision with window edges
-    if (b->pos[0] < 0.0) {
-      deleteBullet(b);
-      //b->pos[0] += (Flt)xres;
-    }
-    else if (b->pos[0] > (Flt)xres) {
-      deleteBullet(b);
-      //b->pos[0] -= (Flt)xres;
-    }
-    else if (b->pos[1] < 0.0) {
-      deleteBullet(b);
-      //b->pos[1] += (Flt)yres;
-    }
-    else if (b->pos[1] > (Flt)yres) {
-      deleteBullet(b);
-      //b->pos[1] -= (Flt)yres;
-    }
-    b = b->next;
-  }
+  updateBulletPos();
+  
 }
 
 #ifdef USE_SHIP
@@ -916,27 +833,6 @@ void draw_ship(void)
   }	
 }
 #endif //USE_SHIP
-
-void draw_enemy(void)
-{
-    buildEnemyImage();
-    //glColor4f(1.0f, 1.0f, 1.0f, 0.8f);
-    glPushMatrix();
-    glTranslatef(enemy.pos[0],enemy.pos[1],enemy.pos[2]);
-    glEnable(GL_ALPHA_TEST);
-    //glAlphaFunc(GL_GREATER, 0.0f);
-    glBindTexture(GL_TEXTURE_2D, shipTexture);
-    glBegin(GL_QUADS);
-    float w = enemy.width2;
-    glTexCoord2f(0.0f, 0.0f); glVertex2f(-w, w);
-    glTexCoord2f(1.0f, 0.0f); glVertex2f( w, w);
-    glTexCoord2f(1.0f, 1.0f); glVertex2f( w, -w);
-    glTexCoord2f(0.0f, 1.0f); glVertex2f(-w, -w);
-    glEnd();
-    glBindTexture(GL_TEXTURE_2D, 0);
-    //glDisable(GL_ALPHA_TEST);
-    glPopMatrix();
-}
 
 void draw_raindrops(void)
 {
@@ -977,14 +873,7 @@ void render(void)
     dispShip(ship, shipTexture);
   }
   if (show_enemy) {
-    enemy.pos[0] = 320.0;
-    enemy.pos[1] = (double)(yres-400);
-    VecCopy(enemy.pos, enemy.lastpos);
-    enemy.width = 50.0;
-    enemy.width2 = enemy.width * 0.5;
-    enemy.radius = (float)enemy.width2;
-    enemy.shape = 1; //SHIP_FLAT;
-    dispEnemy(enemy, enemyTexture);
+    check_enemies();
   }
 
   glDisable(GL_TEXTURE_2D);
@@ -1008,7 +897,8 @@ void render(void)
     draw_ship();
 #endif //USE_SHIP
   if (show_enemy)
-    draw_enemy();
+    dispEnemy(enemy, enemyTexture);
+    
   glBindTexture(GL_TEXTURE_2D, 0);
   //
   //
@@ -1041,72 +931,4 @@ void render(void)
     }
 
   }
-}
-
-void deleteBullet(Bullet *node)
-{
-  if((node->next == NULL) && (node->prev == NULL)) {
-    bhead = NULL;
-    free(node);
-    node = NULL;
-  }
-
-  else if((node->next != NULL) && (node->prev == NULL)) {
-    Bullet *tmp = node->next;
-    tmp->prev = NULL;
-    bhead = node->next;
-    free(node);
-    node = NULL;
-  }
-
-  else if((node->next == NULL) && (node->prev != NULL)) {
-    Bullet *tmp = node->prev;
-    tmp->next = NULL;
-    free(node);
-    node = NULL;
-  }
-
-  else {
-    Bullet *tmp1, *tmp2;
-    tmp1 = node->next;
-    tmp2 = node->prev;
-    tmp1->prev = tmp2;
-    tmp2->next = tmp1;
-    free(node);
-    node = NULL;
-  }
-  //Same requirements as deleteAsteroid()
-}
-
-void buildEnemyImage()
-{
-  enemyImage     = ppm6GetImage("./images/bigfoot.ppm");
-  //
-  //create opengl texture elements
-  glGenTextures(1, &enemyTexture);
-  glGenTextures(1, &silhouetteTexture);
-  int w = enemyImage->width;
-  int h = enemyImage->height;
-  //
-  glBindTexture(GL_TEXTURE_2D, shipTexture);
-  //
-  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
-  glTexImage2D(GL_TEXTURE_2D, 0, 3, w, h, 0,
-              GL_RGB, GL_UNSIGNED_BYTE, shipImage->data);
-
-  unsigned char *silhouetteData = buildAlphaData(enemyImage);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0,
-              GL_RGBA, GL_UNSIGNED_BYTE, silhouetteData);
-  free(silhouetteData);
-}
-
-void dispEnemy(Enemy enemy, GLuint enemyTexture)
-{
-  glPushMatrix();
-  glTranslatef(enemy.pos[0],ship.pos[1],ship.pos[2]);
-  glBindTexture(GL_TEXTURE_2D, enemyTexture);
-  glBegin(GL_QUADS);
-  glEnd();
-  glPopMatrix();
 }

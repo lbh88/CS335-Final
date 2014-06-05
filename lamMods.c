@@ -14,6 +14,7 @@
 #include "ppm.h"
 #include "fonts.h"
 #include "lamMods.h"
+#include "nickMods.h"
 #define USE_SOUND
 
 #ifdef USE_SOUND
@@ -35,6 +36,7 @@ Stats stats;
 Ship ship;
 struct timespec shipAnimation;
 struct timespec timeCurrent;
+struct timespec bulletTimer;
 double timeDiff(struct timespec *start, struct timespec *end);
 
 unsigned char *buildAlphaData(Ppmimage *img);
@@ -150,17 +152,17 @@ void buildShipImage()
 	double sa =timeDiff(&shipAnimation,&timeCurrent);
 	sa = sa*10;
 	int saTime = (int) sa;
-	saTime = saTime%3;
+	saTime = saTime%4;
 	switch (saTime)
 	{
 		case 0:
 			shipImage  = ppm6GetImage("./images/spaceship.ppm");
 			break;
-		case 1:
-			shipImage  = ppm6GetImage("./images/spaceship1.ppm");
-			break;
 		case 2:
 			shipImage  = ppm6GetImage("./images/spaceship2.ppm");
+			break;
+		default: 
+			shipImage  = ppm6GetImage("./images/spaceship1.ppm");
 			break;
 	}
 	//
@@ -202,13 +204,14 @@ void checkMovement()
 		if (ship.pos[0] <= 0)
 			ship.pos[0] = 0;
     }
-    else if (keys[XK_Right])
+    if (keys[XK_Right])
     {
 	//	VecCopy(ship.pos, ship.lastpos);
 		ship.pos[0] = ship.pos[0]+1.0*stats.moveSpeed;
 		if (ship.pos[0] >= xres )
 			ship.pos[0] = xres;
 	}	
+	
     if (keys[XK_Up])
     {
     //  VecCopy(ship.pos, ship.lastpos);
@@ -222,4 +225,13 @@ void checkMovement()
 		if (ship.pos[1] <= 0)
 			ship.pos[1] = 0;
     }
+    
+    if (keys[XK_space])
+    {
+			double bt = timeDiff(&bulletTimer, &timeCurrent);
+			if ( bt > .3*stats.fireSpeed) {
+				clock_gettime(CLOCK_REALTIME, &bulletTimer);
+				shipShootBullet(ship);
+			}
+	}
 }

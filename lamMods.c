@@ -293,7 +293,7 @@ void buildShipImage()
 	unsigned char *silhouetteData = buildAlphaData(shipImage);	
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0,
 							GL_RGBA, GL_UNSIGNED_BYTE, silhouetteData);
-	free(silhouetteData);
+	//free(silhouetteData);
 
 }
 
@@ -515,7 +515,7 @@ void checkDeath()
 		
 		clock_gettime(CLOCK_REALTIME, &deathTimer);	
 		#ifdef USE_SOUND
-		//FMOD_RESULT result;
+/*		//FMOD_RESULT result;
 		if (fmod_init()) {
 			printf("ERROR - fmod_init()\n\n");
 			return;
@@ -524,8 +524,8 @@ void checkDeath()
 			printf("ERROR - fmod_createsound()\n\n");
 			return;
 		}
-		fmod_setmode(0,FMOD_LOOP_OFF);
-		fmod_playsound(0);
+		fmod_setmode(0,FMOD_LOOP_OFF); */
+		//fmod_playsound(3);
 		#endif //USE_SOUND
 	}
 	return;
@@ -536,13 +536,13 @@ void restartGame()
 	deathTime = 0.0;
 	kills = 0;
 	fmod_cleanupIntro(0);
-	fmod_cleanupIntro(4);
+	init_music();
+	//fmod_cleanupIntro(4);
 	ship.pos[0] = 320.0;
 	ship.pos[1] = (double)(yres-400);
 	
 	enemy.pos[0] = random(xres);
 	enemy.pos[1] = (double)(yres)+50;
-	init_music();
 	fmod_playsound(0);
 	initStats();
 	show_enemy ^= 1;

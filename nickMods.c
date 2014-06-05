@@ -162,7 +162,7 @@ void check_enemies() {
     dispEnemy(enemy, enemyTexture);
   }
   double at = timeDiff(&enemyBulletTimer, &timeCurrent);
-  if(at > 1.5 - .2*stats.fireSpeed) {
+  if(at > 1.5 - .05*stats.fireSpeed) {
     clock_gettime(CLOCK_REALTIME, &enemyBulletTimer);
     enemyShootBullet();
   }
@@ -241,7 +241,7 @@ void updateBulletPos() {
   }
   if(enemy.pos[1] < (double)(yres)-500) {
     deleteEnemy();
-    stats.health--;
+    //stats.health--;
     checkDeath();
   }
 }
@@ -395,7 +395,7 @@ void buildEnemyImage()
   unsigned char *silhouetteData = buildAlphaData(enemyImage);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0,
       GL_RGBA, GL_UNSIGNED_BYTE, silhouetteData);
-  free(silhouetteData);
+  //free(silhouetteData);
 }
 
 void dispEnemy(Enemy enemy, GLuint enemyTexture)

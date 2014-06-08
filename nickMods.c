@@ -39,6 +39,7 @@ int xres, yres;
 int play_sounds;
 int bullCount = 0;
 int enemyBullCount = 0;
+int invincible;
 
 Ppmimage *enemyImage;
 Ppmimage *shipImage;
@@ -48,10 +49,12 @@ GLuint silhouetteTexture;
 struct timespec timeCurrent;
 struct timespec bulletTimer;
 struct timespec enemyBulletTimer;
+struct timespec invincibleTimer;
 double timeDiff(struct timespec *start, struct timespec *end);
 unsigned char *buildAlphaData(Ppmimage *img);
 
 void enemyMovement();
+void timeCopy(struct timespec *dest, struct timespec *source);
 
 typedef struct t_ship {
   int shape;
@@ -263,7 +266,7 @@ void updateBulletPos() {
 void updateEnemyBulletPos() {
 	  Bullet *a = ahead;
   while(a) {
-    a->pos[0] -= a->vel[0] + .3*stats.moveSpeed;
+    a->pos[0] -= a->vel[0];// + .3*stats.moveSpeed;
     a->pos[1] -= a->vel[1] + .3*stats.moveSpeed;
     //Check for collision with window edges
     if (a->pos[1] < (Flt)yres-600) {
@@ -272,8 +275,13 @@ void updateEnemyBulletPos() {
     if (a->pos[0] >= ship.pos[0]-20 && a->pos[0] <= ship.pos[0]+20
         && a->pos[1] >= ship.pos[1]-30 && a->pos[1] <= ship.pos[1]+30) {
       deleteEnemyBullet(a);
-      stats.health--;
-      checkDeath();
+      if(!invincible)
+      {
+		  stats.health--;
+		  timeCopy(&invincibleTimer, &timeCurrent);
+		  invincible ^= 1;
+		  checkDeath();
+	  }
     }
     a = a->next;
   }
@@ -282,8 +290,13 @@ void updateEnemyBulletPos() {
     deleteEnemy();
     kills++;
     checkUpgrades();
-    stats.health--;
-    checkDeath();
+    if (!invincible)
+    {
+		stats.health--;
+		timeCopy(&invincibleTimer, &timeCurrent);
+		invincible ^= 1;
+		checkDeath();
+	}
   }
 }
 void draw_enemy(void)

@@ -74,6 +74,7 @@ typedef struct t_enemy {
 int xres, yres;
 int kills;
 int dead;
+int invincible;
 GLuint shipTexture[10];
 GLuint introTexture;
 GLuint gameOverTexture;
@@ -88,6 +89,7 @@ int keys[65536];
 Stats stats;
 Ship ship;
 struct timespec shipAnimation;
+struct timespec invincibleTimer;
 struct timespec timeCurrent;
 struct timespec bulletTimer;
 double timeDiff(struct timespec *start, struct timespec *end);
@@ -151,10 +153,24 @@ void draw_ship(void)
   //Log("draw_ship()...\n");
 	if (stats.health	> 0)
 	{
-		double sa =timeDiff(&shipAnimation,&timeCurrent);
-		sa = sa*10;
-		int saTime = (int) sa;
-		saTime = saTime%3;
+		double sa;
+		int saTime;
+		if (!invincible)
+		{
+			sa =timeDiff(&shipAnimation,&timeCurrent);
+			sa = sa*10;
+			saTime = (int) sa;
+			saTime = saTime%3;
+		} else {
+			sa = timeDiff(&invincibleTimer, &timeCurrent);
+			if (sa >= 1.5)
+				invincible ^= 1;
+			sa = sa*10;
+			saTime = (int) sa;
+			saTime = saTime %2;
+			if (saTime == 1)
+				saTime = 9;
+		}
 		
 		if (ship.shape == SHIP_FLAT) {
 			//glColor4f(1.0f, 0.2f, 0.2f, 0.5f);
@@ -209,7 +225,10 @@ void draw_ship(void)
 		{
 			i = 8;
 		}
-	
+		else if (deathTime >=2.2)
+		{
+			i = 9;
+		}
 		if (deathTime >= 2.2)
 		{
 			show_ship ^= 1;
@@ -330,6 +349,7 @@ void buildShipImage()
 	shipImage[6]  = ppm6GetImage("./images/explosion3.ppm");
 	shipImage[7]  = ppm6GetImage("./images/explosion4.ppm");
 	shipImage[8]  = ppm6GetImage("./images/explosion5.ppm");
+	shipImage[9]  = ppm6GetImage("./images/explosion6.ppm");
 
 /*	else
 	{
@@ -380,7 +400,7 @@ void buildShipImage()
 	//create opengl texture elements
 	
 	int i = 0; //index for for loop
-	for ( i = 0 ; i <= 8; i++)
+	for ( i = 0 ; i <= 9; i++)
 	{
 		glGenTextures(1, &shipTexture[i]);
 		glGenTextures(1, &silhouetteTexture);

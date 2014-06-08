@@ -181,6 +181,8 @@ int show_enemy = 0;
 void buildEnemyImage();
 void dispEnemy(Enemy enemy, GLuint enemyTexture); 
 void checkMovement();
+int invincible = 0;
+struct timespec invincibleTimer;
 
 typedef struct t_bullet {
   Vec pos;

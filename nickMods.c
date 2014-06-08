@@ -37,6 +37,8 @@ typedef double Vec[3];
 #define VecCopy(a,b) (b)[0]=(a)[0];(b)[1]=(a)[1];(b)[2]=(a)[2]
 int xres, yres;
 int play_sounds;
+int bullCount = 0;
+int enemyBullCount = 0;
 
 Ppmimage *enemyImage;
 Ppmimage *shipImage;
@@ -87,6 +89,7 @@ void buildEnemyImage();
 void dispEnemy(Enemy enemy, GLuint enemyTexture); 
 
 typedef struct t_bullet {
+  int bulletCount;
   Vec pos;
   Vec vel;
   float color[3];
@@ -124,11 +127,15 @@ void shipShootBullet() {
   if (bhead != NULL)
     bhead->prev = b;
   bhead = b;
+  bullCount++;
+  b->bulletCount = bullCount;
+  printf("Firing bullet: %d\n",b->bulletCount);
 }
 
 void enemyShootBullet() {
-  if (play_sounds)
-	fmod_playsound(2);
+  enemyBullCount++;
+  //if (play_sounds)
+  //fmod_playsound(2);
   //shoot a bullet...
   Bullet *a = (Bullet *)malloc(sizeof(Bullet));
   a->pos[0] = enemy.pos[0];
@@ -157,14 +164,18 @@ void enemyShootBullet() {
 
 void check_enemies() {
   if(enemy.pos[1] > (double)(yres)-600) {
-    enemy.pos[1] = enemy.pos[1]- (2.5 + .2*stats.moveSpeed);
+    enemy.pos[1] = enemy.pos[1] - (2.5 + .3*stats.moveSpeed);
     enemyMovement();
     dispEnemy(enemy, enemyTexture);
   }
   double at = timeDiff(&enemyBulletTimer, &timeCurrent);
   if(at > 1.5 - .05*stats.fireSpeed) {
+	  if ( play_sounds )
+		fmod_playsound(2);
+		
     clock_gettime(CLOCK_REALTIME, &enemyBulletTimer);
     enemyShootBullet();
+    printf("enemy bullet count: %d\n", enemyBullCount);
   }
 }
 
@@ -175,6 +186,7 @@ void deleteEnemy() {
 
 void deleteEnemyBullet(Bullet *node)
 {
+	enemyBullCount--;
   if((node->next == NULL) && (node->prev == NULL)) {
     ahead = NULL;
     free(node);
@@ -212,8 +224,8 @@ void updateBulletPos() {
   clock_gettime(CLOCK_REALTIME, &bt);
   Bullet *b = bhead;
   while(b) {
-    b->pos[0] += b->vel[0];
-    b->pos[1] += b->vel[1];
+    b->pos[0] += b->vel[0];// + .3 * stats.moveSpeed;
+    b->pos[1] += b->vel[1] + .3 * stats.moveSpeed;
     //Check for collision with window edges
     if (b->pos[0] < 0.0) {
       deleteBullet(b);
@@ -229,8 +241,10 @@ void updateBulletPos() {
     }
     if (b->pos[0] >= enemy.pos[0]-20 && b->pos[0] <= enemy.pos[0]+20
         && b->pos[1] >= enemy.pos[1]-30 && b->pos[1] <= enemy.pos[1]+30) {
+			
 		if (play_sounds)
 			fmod_playsound(3);
+		printf("Hit enemy -- ");
       deleteBullet(b);
       deleteEnemy();
       kills++;
@@ -249,8 +263,8 @@ void updateBulletPos() {
 void updateEnemyBulletPos() {
 	  Bullet *a = ahead;
   while(a) {
-    a->pos[0] -= a->vel[0];
-    a->pos[1] -= a->vel[1];
+    a->pos[0] -= a->vel[0] + .3*stats.moveSpeed;
+    a->pos[1] -= a->vel[1] + .3*stats.moveSpeed;
     //Check for collision with window edges
     if (a->pos[1] < (Flt)yres-600) {
       deleteEnemyBullet(a);
@@ -274,7 +288,7 @@ void updateEnemyBulletPos() {
 }
 void draw_enemy(void)
 {
-  buildEnemyImage();
+  //buildEnemyImage();
   //glColor4f(1.0f, 1.0f, 1.0f, 0.8f);
   glPushMatrix();
   glTranslatef(enemy.pos[0],enemy.pos[1],enemy.pos[2]);
@@ -342,10 +356,12 @@ void initBullet() {
 
 void deleteBullet(Bullet *node)
 {
+	printf("Deleting bullet: %d", node->bulletCount);
   if((node->next == NULL) && (node->prev == NULL)) {
     bhead = NULL;
     free(node);
     node = NULL;
+    printf(" -- only bullet\n");
   }
 
   else if((node->next != NULL) && (node->prev == NULL)) {
@@ -354,6 +370,7 @@ void deleteBullet(Bullet *node)
     bhead = node->next;
     free(node);
     node = NULL;
+    printf(" -- first bullet\n");
   }
 
   else if((node->next == NULL) && (node->prev != NULL)) {
@@ -361,6 +378,7 @@ void deleteBullet(Bullet *node)
     tmp->next = NULL;
     free(node);
     node = NULL;
+    printf(" -- last bullet\n");
   }
 
   else {
@@ -371,6 +389,7 @@ void deleteBullet(Bullet *node)
     tmp2->next = tmp1;
     free(node);
     node = NULL;
+    printf(" -- middle bullet\n");
   }
 }
 
@@ -395,7 +414,7 @@ void buildEnemyImage()
   unsigned char *silhouetteData = buildAlphaData(enemyImage);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0,
       GL_RGBA, GL_UNSIGNED_BYTE, silhouetteData);
-  //free(silhouetteData);
+  free(silhouetteData);
 }
 
 void dispEnemy(Enemy enemy, GLuint enemyTexture)

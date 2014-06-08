@@ -28,43 +28,25 @@
 #define rnd() (((double)rand())/(double)RAND_MAX)
 #define random(a) (rand()%a)
 
-int xres, yres;
-int kills;
-int dead;
-GLuint shipTexture;
-GLuint introTexture;
-GLuint gameOverTexture;
-GLuint silhouetteTexture;
-GLuint backgroundTexture;
-GLuint backgroundTexture2;
-Ppmimage *introImage=NULL;
-Ppmimage *gameOverImage=NULL;
-Ppmimage *shipImage;
-int keys[65536];
-Stats stats;
-Ship ship;
-struct timespec shipAnimation;
-struct timespec timeCurrent;
-struct timespec bulletTimer;
-double timeDiff(struct timespec *start, struct timespec *end);
-void timeCopy(struct timespec *dest, struct timespec *source);
-int show_enemy;
-int show_ship;
-int bg;
-struct timespec deathTimer;
-double deathTime;
-int play_sounds;
-
-unsigned char *buildAlphaData(Ppmimage *img);
+#define USE_SHIP
+#ifdef USE_SHIP
+#define SHIP_FLAT	0
+#define SHIP_ROUND 1
 
 typedef struct t_ship {
   int shape;
   Vec pos;
   Vec lastpos;
+  Vec vel;
+  float angle;
   float width;
   float width2;
   float radius;
 } Ship;
+Ship ship;
+//int show_ship=0;
+int deflection;
+#endif //USE_SHIP
 
 Vec bgPos1;
 Vec bgPos2;
@@ -87,6 +69,40 @@ typedef struct t_enemy {
   float width2;
   float radius;
 } Enemy;
+
+
+int xres, yres;
+int kills;
+int dead;
+GLuint shipTexture[10];
+GLuint introTexture;
+GLuint gameOverTexture;
+GLuint silhouetteTexture;
+GLuint backgroundTexture;
+GLuint backgroundTexture2;
+Ppmimage *introImage=NULL;
+Ppmimage *gameOverImage=NULL;
+Ppmimage *shipImage[10];
+
+int keys[65536];
+Stats stats;
+Ship ship;
+struct timespec shipAnimation;
+struct timespec timeCurrent;
+struct timespec bulletTimer;
+double timeDiff(struct timespec *start, struct timespec *end);
+void timeCopy(struct timespec *dest, struct timespec *source);
+int show_enemy;
+int show_ship;
+int bg;
+struct timespec deathTimer;
+double deathTime;
+int play_sounds;
+int bullCount;
+
+unsigned char *buildAlphaData(Ppmimage *img);
+
+
 Enemy enemy;
 
 typedef double Vec[3];
@@ -127,14 +143,106 @@ void endIntroSong()
 	
 }
 
-void dispShip(Ship ship, GLuint shipTexture)
+
+void draw_ship(void)
 {
-	glPushMatrix();
-	glTranslatef(ship.pos[0],ship.pos[1],ship.pos[2]);
-	glBindTexture(GL_TEXTURE_2D, shipTexture);
-        glBegin(GL_QUADS);
-	glEnd();
-	glPopMatrix();
+  //buildShipImage();
+  //dispShip();
+  //Log("draw_ship()...\n");
+	if (stats.health	> 0)
+	{
+		double sa =timeDiff(&shipAnimation,&timeCurrent);
+		sa = sa*10;
+		int saTime = (int) sa;
+		saTime = saTime%3;
+		
+		if (ship.shape == SHIP_FLAT) {
+			//glColor4f(1.0f, 0.2f, 0.2f, 0.5f);
+			glLineWidth(40);
+			glBegin(GL_LINES);
+			glVertex2f(ship.pos[0]-ship.width2, ship.pos[1]);
+			glVertex2f(ship.pos[0]+ship.width2, ship.pos[1]);
+			glEnd();
+			glLineWidth(1);
+		} else {
+		//glColor4f(1.0f, 1.0f, 1.0f, 0.8f);
+			glPushMatrix();
+			glTranslatef(ship.pos[0],ship.pos[1],ship.pos[2]);
+			glEnable(GL_ALPHA_TEST);
+			//glAlphaFunc(GL_GREATER, 0.0f);
+			glBindTexture(GL_TEXTURE_2D, shipTexture[saTime]);
+			glBegin(GL_QUADS);
+			float w = ship.width2;
+			glTexCoord2f(0.0f, 0.0f); glVertex2f(-w, w);
+			glTexCoord2f(1.0f, 0.0f); glVertex2f( w, w);
+			glTexCoord2f(1.0f, 1.0f); glVertex2f( w, -w);
+			glTexCoord2f(0.0f, 1.0f); glVertex2f(-w, -w);
+			glEnd();
+			glBindTexture(GL_TEXTURE_2D, 0);
+			//glDisable(GL_ALPHA_TEST);
+			glPopMatrix();
+		}	
+	} else {
+		int i = 0;
+		deathTime = timeDiff(&deathTimer,&timeCurrent);
+		if (deathTime < .4)
+		{
+			i = 3;
+		}
+		else if (deathTime < .8)
+		{
+			i = 4;
+		}
+		else if (deathTime < 1.2 )
+		{
+			i = 5;
+		}
+		else if (deathTime < 1.6 )
+		{
+			i = 6;
+		}
+		else if (deathTime < 2)
+		{
+			i = 7;
+		}
+		else if (deathTime < 2.2)
+		{
+			i = 8;
+		}
+	
+		if (deathTime >= 2.2)
+		{
+			show_ship ^= 1;
+			dead ^= 1;
+			printf("playing sawyer\n");
+			if (fmod_init()) {
+				printf("ERROR - fmod_init()\n\n");
+				return;
+			}
+			if (fmod_createsound("./sounds/sawyer.mp3", 0)) {
+				printf("ERROR - fmod_createsound()\n\n");
+				return;
+			}
+			fmod_setmode(0,FMOD_LOOP_OFF);
+			fmod_playsound(0);
+		}
+		glPushMatrix();
+		glTranslatef(ship.pos[0],ship.pos[1],ship.pos[2]);
+		glEnable(GL_ALPHA_TEST);
+		//glAlphaFunc(GL_GREATER, 0.0f);
+		glBindTexture(GL_TEXTURE_2D, shipTexture[i]);
+		glBegin(GL_QUADS);
+		float w = ship.width2;
+		glTexCoord2f(0.0f, 0.0f); glVertex2f(-w, w);
+		glTexCoord2f(1.0f, 0.0f); glVertex2f( w, w);
+		glTexCoord2f(1.0f, 1.0f); glVertex2f( w, -w);
+		glTexCoord2f(0.0f, 1.0f); glVertex2f(-w, -w);
+		glEnd();
+		glBindTexture(GL_TEXTURE_2D, 0);
+		//glDisable(GL_ALPHA_TEST);
+		glPopMatrix();
+	}
+  
 }
 
 void dispBG()
@@ -213,26 +321,17 @@ void dispIntro()
 
 void buildShipImage()
 {	
-	double sa =timeDiff(&shipAnimation,&timeCurrent);
-	sa = sa*10;
-	int saTime = (int) sa;
-	saTime = saTime%4;
-	if (stats.health	> 0)
-	{
-		switch (saTime)
-		{
-			case 0:
-				shipImage  = ppm6GetImage("./images/spaceship.ppm");
-				break;
-			case 2:
-				shipImage  = ppm6GetImage("./images/spaceship2.ppm");
-				break;
-			default: 
-				shipImage  = ppm6GetImage("./images/spaceship1.ppm");
-				break;
-		}
-	}
-	else
+	shipImage[0]  = ppm6GetImage("./images/spaceship.ppm");
+	shipImage[1]  = ppm6GetImage("./images/spaceship1.ppm");
+	shipImage[2]  = ppm6GetImage("./images/spaceship2.ppm");
+	shipImage[3]  = ppm6GetImage("./images/explosion.ppm");
+	shipImage[4]  = ppm6GetImage("./images/explosion1.ppm");
+	shipImage[5]  = ppm6GetImage("./images/explosion2.ppm");
+	shipImage[6]  = ppm6GetImage("./images/explosion3.ppm");
+	shipImage[7]  = ppm6GetImage("./images/explosion4.ppm");
+	shipImage[8]  = ppm6GetImage("./images/explosion5.ppm");
+
+/*	else
 	{
 		deathTime = timeDiff(&deathTimer,&timeCurrent);
 		if (deathTime < .4)
@@ -255,6 +354,8 @@ void buildShipImage()
 		{
 			shipImage = ppm6GetImage("./images/explosion4.ppm");
 		}
+		*/
+		/*
 		
 		if (deathTime > 2)
 		{
@@ -274,26 +375,32 @@ void buildShipImage()
 		}
 		
 	}
+	*/
 	//
 	//create opengl texture elements
-	glGenTextures(1, &shipTexture);
-	glGenTextures(1, &silhouetteTexture);
-		
-	int w = shipImage->width;
-	int h = shipImage->height;
-	//
-	glBindTexture(GL_TEXTURE_2D, shipTexture);
-	//
-	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
-	glTexImage2D(GL_TEXTURE_2D, 0, 3, w, h, 0,
-							GL_RGB, GL_UNSIGNED_BYTE, shipImage->data);
-							
-							
-	unsigned char *silhouetteData = buildAlphaData(shipImage);	
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0,
-							GL_RGBA, GL_UNSIGNED_BYTE, silhouetteData);
-	//free(silhouetteData);
+	
+	int i = 0; //index for for loop
+	for ( i = 0 ; i <= 8; i++)
+	{
+		glGenTextures(1, &shipTexture[i]);
+		glGenTextures(1, &silhouetteTexture);
+			
+		int w = shipImage[i]->width;
+		int h = shipImage[i]->height;
+		//
+		glBindTexture(GL_TEXTURE_2D, shipTexture[i]);
+		//
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+		glTexImage2D(GL_TEXTURE_2D, 0, 3, w, h, 0,
+								GL_RGB, GL_UNSIGNED_BYTE, shipImage[i]->data);
+								
+								
+		unsigned char *silhouetteData = buildAlphaData(shipImage[i]);	
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0,
+								GL_RGBA, GL_UNSIGNED_BYTE, silhouetteData);
+		free(silhouetteData);
+	}
 
 }
 
@@ -339,12 +446,15 @@ void checkMovement()
 		struct timespec bt;
 		clock_gettime(CLOCK_REALTIME, &bt);
 		double ts = timeDiff(&bulletTimer, &timeCurrent);
-			if ( ts > .3 - (stats.fireSpeed/100)*5) {
+		double fire = ( stats.fireSpeed*.02 > .15 ) ? .15 : stats.fireSpeed*.02 ;
+			if ( ts > .3 - fire) {
 				timeCopy(&bulletTimer, &bt);
 				if (play_sounds)
 					fmod_playsound(1);
 				shipShootBullet();
+				
 			}
+			
 	}
 }
 
@@ -419,15 +529,15 @@ void checkUpgrades()
 {
 	if (kills == 0)
 		return;
-	if ( kills%10 == 0 )
+	if ( kills%5 == 0 )
 	{
 		stats.fireSpeed = stats.fireSpeed + 1;
 	}
-	if ( kills%20 == 0 )
+	if ( kills%15 == 0 )
 	{
 		stats.moveSpeed = stats.moveSpeed + 1;
 	}
-	if ( kills%50 == 0 )
+	if ( kills%30 == 0 )
 	{
 		stats.health = stats.health+ 1;
 	}	
@@ -438,11 +548,11 @@ void enemyMovement()
 {
 	if (enemy.pos[0] < ship.pos[0])
 	{
-		enemy.pos[0] += 1;
+		enemy.pos[0] += 1 + .2*stats.moveSpeed;
 	}
 	else if (enemy.pos[0] > ship.pos[0])
 	{
-		enemy.pos[0] -= 1;
+		enemy.pos[0] -= 1 + .2*stats.moveSpeed;
 	}
 	
 }
@@ -551,6 +661,3 @@ void restartGame()
 	bg ^= 1;
 	
 }
-
-
-

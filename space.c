@@ -97,9 +97,9 @@ double deathTime;
 
 Ppmimage *enemyImage=NULL;
 GLuint enemyTexture;
-Ppmimage *shipImage;
+Ppmimage *shipImage[10];
 Ppmimage *backgroundImage=NULL;
-GLuint shipTexture;
+GLuint shipTexture[10];
 GLuint backgroundTexture;
 GLuint backgroundTexture2;
 GLuint silhouetteTexture;
@@ -394,6 +394,9 @@ void init_opengl(void)
   glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
   glTexImage2D(GL_TEXTURE_2D, 0, 3, backgroundImage->width, backgroundImage->height, 0, GL_RGB, GL_UNSIGNED_BYTE, backgroundImage->data);
+  
+  buildShipImage();
+  buildEnemyImage();
 }
 
 void check_resize(XEvent *e)
@@ -424,7 +427,7 @@ void init() {
 	clock_gettime(CLOCK_REALTIME, &bulletTimer);
 	memset(keys, 0, 65536);
 	initEnemy();
-	initBullet();
+//	initBullet();
 }
 
 void check_mouse(XEvent *e)
@@ -513,7 +516,6 @@ void check_keys(XEvent *e)
 			show_ship ^= 1;
 			bg ^= 1;
 			init_sounds();
-			play_sounds ^= 1;
 	#ifdef USE_SOUND 
 			//fmod_playsound(0);
 			fmod_playsound(0);
@@ -587,60 +589,6 @@ void physics(void)
   
 }
 
-#ifdef USE_SHIP
-void draw_ship(void)
-{
-  buildShipImage();
-  //Log("draw_ship()...\n");
-  if (ship.shape == SHIP_FLAT) {
-    //glColor4f(1.0f, 0.2f, 0.2f, 0.5f);
-    glLineWidth(40);
-    glBegin(GL_LINES);
-    glVertex2f(ship.pos[0]-ship.width2, ship.pos[1]);
-    glVertex2f(ship.pos[0]+ship.width2, ship.pos[1]);
-    glEnd();
-    glLineWidth(1);
-  } else {
-    //glColor4f(1.0f, 1.0f, 1.0f, 0.8f);
-    glPushMatrix();
-    glTranslatef(ship.pos[0],ship.pos[1],ship.pos[2]);
-    glEnable(GL_ALPHA_TEST);
-    //glAlphaFunc(GL_GREATER, 0.0f);
-    glBindTexture(GL_TEXTURE_2D, shipTexture);
-    glBegin(GL_QUADS);
-    float w = ship.width2;
-    glTexCoord2f(0.0f, 0.0f); glVertex2f(-w, w);
-    glTexCoord2f(1.0f, 0.0f); glVertex2f( w, w);
-    glTexCoord2f(1.0f, 1.0f); glVertex2f( w, -w);
-    glTexCoord2f(0.0f, 1.0f); glVertex2f(-w, -w);
-    glEnd();
-    glBindTexture(GL_TEXTURE_2D, 0);
-    //glDisable(GL_ALPHA_TEST);
-    glPopMatrix();
-  }	
-}
-#endif //USE_SHIP
-
-void draw_raindrops(void)
-{
-  //if (ihead) {
-  Raindrop *node = ihead;
-  while(node) {
-    glPushMatrix();
-    glTranslated(node->pos[0],node->pos[1],node->pos[2]);
-    glColor4fv(node->color);
-    glLineWidth(node->linewidth);
-    glBegin(GL_LINES);
-    glVertex2f(0.0f, 0.0f);
-    glVertex2f(0.0f, node->length);
-    glEnd();
-    glPopMatrix();
-    node = node->next;
-  }
-  //}
-  glLineWidth(1);
-}
-
 void render(void)
 {
   Rect r;
@@ -656,11 +604,9 @@ void render(void)
   if (bg) {
     dispBG();
   }
-  if (show_ship) {
-    dispShip(ship, shipTexture);
-  }
+  
   if (show_enemy) {
-    dispEnemy(enemy, enemyTexture);
+//    dispEnemy(enemy, enemyTexture);
   }
 
   glDisable(GL_TEXTURE_2D);
@@ -674,8 +620,7 @@ void render(void)
   //return;
   glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
   glEnable(GL_BLEND);
-  if (show_rain)
-    draw_raindrops();
+  
   glDisable(GL_BLEND);
   glEnable(GL_TEXTURE_2D);
   //
@@ -684,7 +629,7 @@ void render(void)
     draw_ship();
 #endif //USE_SHIP
   if (show_enemy)
-    draw_enemy();
+      draw_enemy();
   glBindTexture(GL_TEXTURE_2D, 0);
   //
   //

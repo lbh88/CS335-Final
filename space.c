@@ -95,6 +95,8 @@ int kills = 0;
 int keys[65536];
 int dead = 0;
 double deathTime;
+int vic = 0;
+int ending = 0;
 
 Ppmimage *enemyImage=NULL;
 GLuint enemyTexture;
@@ -104,6 +106,9 @@ GLuint shipTexture[10];
 GLuint backgroundTexture;
 GLuint backgroundTexture2;
 GLuint silhouetteTexture;
+struct timespec missionTimer;
+struct timespec victoryTimer;
+int mission = 0;
 int show_rain=0;
 #ifdef USE_SOUND
 int play_sounds = 0;
@@ -227,9 +232,9 @@ int main(void)
     }
     if (disp_intro) 
     {
-		if(!dead)
+		if(!dead && !ending)
 			render();
-		else
+		else 
 			dispGameOver();
 	}
 	else
@@ -484,7 +489,7 @@ void check_keys(XEvent *e)
 	  //
 	  switch(key) {
 		case XK_c:
-		  if (dead){
+		  if (dead || ending){
 			  restartGame();
 		  }
 		break;
@@ -508,6 +513,13 @@ void check_keys(XEvent *e)
 		  if (++ndrops > 60)
 			ndrops=60;
 		  break;
+		case XK_v:
+			if (!dead && !vic)
+			{
+				kills = 100;
+				checkVictory();
+			}
+			break;
 		case XK_minus:
 		  if (--ndrops < 0)
 			ndrops = 0;
@@ -520,6 +532,9 @@ void check_keys(XEvent *e)
 			show_ship ^= 1;
 			bg ^= 1;
 			init_sounds();
+			mission ^= 1;
+			timeCopy(&missionTimer,&timeCurrent);
+			buildMissionInfo();
 	#ifdef USE_SOUND 
 			//fmod_playsound(0);
 			fmod_playsound(0);
@@ -612,7 +627,18 @@ void render(void)
   if (show_enemy) {
 //    dispEnemy(enemy, enemyTexture);
   }
-
+  if (mission)
+  {
+	  dispMission();
+  }
+  if (kills >= 100 && ending == 0)
+  {
+	  dispVictory();
+  }
+  if (ending == 1)
+  {
+	  dispEnding();
+  }
   glDisable(GL_TEXTURE_2D);
   //glColor3f(1.0f, 0.0f, 0.0f);
   //glBegin(GL_QUADS);

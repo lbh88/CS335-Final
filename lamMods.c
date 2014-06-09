@@ -101,10 +101,14 @@ int xres, yres;
 int kills;
 int dead;
 int invincible;
+int mission;
+int show_enemy;
+int vic;
+int ending;
+
 GLuint shipTexture[10];
 GLuint bulletTexture[10];
 GLuint enemyBulletTexture[3];
-
 GLuint introTexture;
 GLuint gameOverTexture;
 GLuint silhouetteTexture;
@@ -123,8 +127,11 @@ struct timespec shipAnimation;
 struct timespec invincibleTimer;
 struct timespec timeCurrent;
 struct timespec bulletTimer;
+struct timespec missionTimer;
+struct timespec victoryTimer;
 double timeDiff(struct timespec *start, struct timespec *end);
 void timeCopy(struct timespec *dest, struct timespec *source);
+int vic;
 int show_enemy;
 int show_ship;
 int bg;
@@ -171,6 +178,137 @@ void intro()
 	bgPos2[2]= 0;
 	
 }
+
+void buildMissionInfo()
+{
+	introImage	= ppm6GetImage("./images/mission.ppm");	
+	glGenTextures(1, &introTexture);
+	glGenTextures(1, &silhouetteTexture);		
+	int w = introImage->width;
+	int h = introImage->height;
+	//
+	glBindTexture(GL_TEXTURE_2D, introTexture);
+	//
+	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+	glTexImage2D(GL_TEXTURE_2D, 0, 3, w, h, 0,
+							GL_RGB, GL_UNSIGNED_BYTE, introImage->data);
+	unsigned char *silhouetteData = buildAlphaData(introImage);	
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0,
+							GL_RGBA, GL_UNSIGNED_BYTE, silhouetteData);
+	free(silhouetteData);
+}
+
+void buildVictoryInfo()
+{
+	introImage	= ppm6GetImage("./images/victory.ppm");	
+	glGenTextures(1, &introTexture);
+	glGenTextures(1, &silhouetteTexture);		
+	int w = introImage->width;
+	int h = introImage->height;
+	//
+	glBindTexture(GL_TEXTURE_2D, introTexture);
+	//
+	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+	glTexImage2D(GL_TEXTURE_2D, 0, 3, w, h, 0,
+							GL_RGB, GL_UNSIGNED_BYTE, introImage->data);
+	unsigned char *silhouetteData = buildAlphaData(introImage);	
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0,
+							GL_RGBA, GL_UNSIGNED_BYTE, silhouetteData);
+	free(silhouetteData);
+}
+
+void buildEnding()
+{
+	gameOverImage	= ppm6GetImage("./images/ending.ppm");	
+	glGenTextures(1, &gameOverTexture);
+	glBindTexture(GL_TEXTURE_2D, gameOverTexture);
+	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+	glTexImage2D(GL_TEXTURE_2D, 0, 3, gameOverImage->width, gameOverImage->height, 0, GL_RGB, GL_UNSIGNED_BYTE, gameOverImage->data);
+	
+}
+
+void dispEnding()
+{
+	glClearColor(0.0, 0.0, 0.0, 0.0);
+	glClear(GL_COLOR_BUFFER_BIT);
+	//
+	//
+	//draw a quad with texture
+//	float wid = 120.0f;
+	glColor3f(1.0, 1.0, 1.0);	
+	glBindTexture(GL_TEXTURE_2D, gameOverTexture);
+	glBegin(GL_QUADS);
+		glTexCoord2f(0.0f, 1.0f); glVertex2i(0,0);
+		glTexCoord2f(0.0f, 0.0f); glVertex2i(0, yres);
+		glTexCoord2f(1.0f, 0.0f); glVertex2i(xres, yres);
+		glTexCoord2f(1.0f, 1.0f); glVertex2i(xres, 0);
+	glEnd();	
+	glDisable(GL_TEXTURE_2D);
+	glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_BLEND);
+	glDisable(GL_BLEND);
+	glEnable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+
+void dispMission()
+{
+	glPushMatrix();
+	glTranslatef(xres/2,yres*3/4,0);
+	glEnable(GL_ALPHA_TEST);
+	//glAlphaFunc(GL_GREATER, 0.0f);
+	glBindTexture(GL_TEXTURE_2D, introTexture);
+	glBegin(GL_QUADS);
+	float w = introImage->width/2;
+	float h = introImage->height/2;
+	glTexCoord2f(0.0f, 0.0f); glVertex2f(-w, h);
+	glTexCoord2f(1.0f, 0.0f); glVertex2f( w, h);
+	glTexCoord2f(1.0f, 1.0f); glVertex2f( w, -h);
+	glTexCoord2f(0.0f, 1.0f); glVertex2f(-w, -h);
+	glEnd();
+	glBindTexture(GL_TEXTURE_2D, 0);
+	//glDisable(GL_ALPHA_TEST);
+	glPopMatrix();
+	
+	if (timeDiff(&missionTimer, &timeCurrent) > 6)
+	{	
+		mission ^=1;
+		show_enemy ^= 1;
+	}	
+}
+
+void dispVictory()
+{
+	glPushMatrix();
+	glTranslatef(xres/2,yres*3/4,0);
+	glEnable(GL_ALPHA_TEST);
+	//glAlphaFunc(GL_GREATER, 0.0f);
+	glBindTexture(GL_TEXTURE_2D, introTexture);
+	glBegin(GL_QUADS);
+	float w = introImage->width/2;
+	float h = introImage->height/2;
+	glTexCoord2f(0.0f, 0.0f); glVertex2f(-w, h);
+	glTexCoord2f(1.0f, 0.0f); glVertex2f( w, h);
+	glTexCoord2f(1.0f, 1.0f); glVertex2f( w, -h);
+	glTexCoord2f(0.0f, 1.0f); glVertex2f(-w, -h);
+	glEnd();
+	glBindTexture(GL_TEXTURE_2D, 0);
+	//glDisable(GL_ALPHA_TEST);
+	glPopMatrix();
+	
+	if (timeDiff(&victoryTimer, &timeCurrent) > 6)
+	{	
+		ending = 1;
+		show_ship ^= 1;
+		bg ^= 1;
+		buildEnding();
+	}	
+}
+
 
 void draw_ship(void)
 {
@@ -456,6 +594,19 @@ void initStats()
 
 void checkMovement()
 {
+	if ( kills >= 100 )
+	{
+		if (ship.pos[0] > xres/2 + 5)
+			ship.pos[0] = ship.pos[0]-5;
+		if (ship.pos[0] < xres/2 - 5)
+			ship.pos[0] = ship.pos[0]+5;
+		if (ship.pos[1] > yres/4 + 5)
+			ship.pos[1] = ship.pos[1]-5;
+		if (ship.pos[1] < yres/4 -5)
+			ship.pos[1] = ship.pos[1]+5;
+		return;
+	}
+	
 	if (keys[XK_Left])
 	{
 		ship.pos[0] = ship.pos[0] - 1.0*stats.moveSpeed;
@@ -504,6 +655,19 @@ void init_music(void)
 {
 #ifdef USE_SOUND
 	//FMOD_RESULT result;
+	if (ending)
+	{
+		if (fmod_init()) {
+			printf("ERROR - fmod_init()\n\n");
+			return;
+		}
+		if (fmod_createsound("./sounds/yyz.mp3", 5)) {
+				printf("ERROR - fmod_createsound()\n\n");
+				return;
+		}
+		fmod_setmode(5,FMOD_LOOP_NORMAL);
+	}
+	
 	if (fmod_init()) {
 		printf("ERROR - fmod_init()\n\n");
 		return;
@@ -568,8 +732,16 @@ void init_sounds(void)
 		printf("ERROR - fmod_createsound()\n\n");
 		return;
 	}
-	
 	fmod_setmode(4,FMOD_LOOP_OFF);
+	if (fmod_init()) {
+			printf("ERROR - fmod_init()\n\n");
+			return;
+	}
+	if (fmod_createsound("./sounds/yyz.mp3", 5)) {
+			printf("ERROR - fmod_createsound()\n\n");
+			return;
+	}
+	fmod_setmode(5,FMOD_LOOP_NORMAL);
 	
 #endif //USE_SOUND
 }
@@ -692,12 +864,37 @@ void checkDeath()
 	}
 	return;
 }
+
+void checkVictory()
+{
+	if (kills == 100)
+	{
+		timeCopy(&victoryTimer,&timeCurrent);
+		buildVictoryInfo();
+		invincible ^= 1;
+		show_enemy ^= 1;
+		//deleteAllBullets();
+		fmod_cleanupIntro(0);
+		fmod_playsound(5);
+	}
+}
+	
+void dispWinMsg()
+{
+	
+}
 	
 void restartGame()
 {
 	deathTime = 0.0;
 	kills = 0;
-	fmod_cleanupIntro(0);
+	
+	if(ending)
+	{
+		fmod_cleanupIntro(5);
+	} else {
+		fmod_cleanupIntro(0);
+	}
 	init_music();
 	//fmod_cleanupIntro(4);
 	ship.pos[0] = 320.0;
@@ -707,10 +904,15 @@ void restartGame()
 	enemy.pos[1] = (double)(yres)+50;
 	fmod_playsound(0);
 	initStats();
-	show_enemy ^= 1;
-	show_ship ^= 1;
-	dead ^= 1;
-	bg ^= 1;
+	//show_enemy ^= 1;
+	mission ^= 1;
+	timeCopy(&missionTimer,&timeCurrent);
+	show_ship = 1;
+	dead = 0;
+	bg = 1;
+	ending = 0;
+	invincible = 0;
+	buildMissionInfo();
 	
 }
 

@@ -22,5 +22,11 @@ extern void draw_ship();
 extern int fmod_cleanupIntro(int);
 extern int fmod_playsound(int i);
 extern void buildBulletImage();
+extern void buildMissionInfo();
+extern void dispMission();
+extern void buildVictoryInfo();
+extern void dispVictory();
+extern void dispEnding();
+extern void checkVictory();
 
 #endif

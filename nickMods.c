@@ -109,6 +109,8 @@ Bullet *bhead;
 Bullet *ahead;
 void deleteBullet(Bullet *node);
 int kills;
+int vic;
+int show_enemy;
 
 void shipShootBullet() {
   //shoot a bullet...
@@ -291,6 +293,7 @@ void updateBulletPos() {
 	//      b = saveb;
 		  deleteEnemy();
 		  kills++;
+		  checkVictory();
 		  checkUpgrades();    
 		  continue;
 		}
@@ -332,6 +335,7 @@ void updateEnemyBulletPos() {
       && ship.pos[1] >= enemy.pos[1]-30 && ship.pos[1] <= enemy.pos[1]+30) {
     deleteEnemy();
     kills++;
+    checkVictory();
     checkUpgrades();
     if (!invincible)
     {

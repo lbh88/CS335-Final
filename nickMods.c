@@ -42,10 +42,14 @@ int enemyBullCount = 0;
 int invincible;
 
 Ppmimage *enemyImage;
-Ppmimage *shipImage;
-GLuint shipTexture;
+Ppmimage *shipImage[10];
+Ppmimage *bulletImage[10];
+Ppmimage *enemyBulletImage[3];
+GLuint shipTexture[10];
 GLuint enemyTexture;
 GLuint silhouetteTexture;
+GLuint bulletTexture[10];
+GLuint enemyBulletTexture[3];
 struct timespec timeCurrent;
 struct timespec bulletTimer;
 struct timespec enemyBulletTimer;
@@ -95,6 +99,7 @@ typedef struct t_bullet {
   int bulletCount;
   Vec pos;
   Vec vel;
+  int explode;
   float color[3];
   struct timespec time;
   struct t_bullet *prev;
@@ -108,6 +113,8 @@ int kills;
 void shipShootBullet() {
   //shoot a bullet...
   Bullet *b = (Bullet *)malloc(sizeof(Bullet));
+  timeCopy(&b->time, &timeCurrent);
+  b->explode = 0;
   b->pos[0] = ship.pos[0];
   b->pos[1] = ship.pos[1];
   b->vel[0] = ship.vel[0];
@@ -141,6 +148,7 @@ void enemyShootBullet() {
   //fmod_playsound(2);
   //shoot a bullet...
   Bullet *a = (Bullet *)malloc(sizeof(Bullet));
+  timeCopy(&a->time, &timeCurrent);
   a->pos[0] = enemy.pos[0];
   a->pos[1] = enemy.pos[1];
   a->vel[0] = enemy.vel[0];
@@ -165,27 +173,37 @@ void enemyShootBullet() {
   ahead = a;
 }
 
+void deleteEnemy() {
+  enemy.pos[0] = random(xres);
+  enemy.pos[1] = (double)(yres)+50;
+}
+
 void check_enemies() {
   if(enemy.pos[1] > (double)(yres)-600) {
     enemy.pos[1] = enemy.pos[1] - (2.5 + .3*stats.moveSpeed);
     enemyMovement();
     dispEnemy(enemy, enemyTexture);
   }
-  double at = timeDiff(&enemyBulletTimer, &timeCurrent);
-  if(at > 1.5 - .05*stats.fireSpeed) {
-	  if ( play_sounds )
-		fmod_playsound(2);
-		
-    clock_gettime(CLOCK_REALTIME, &enemyBulletTimer);
-    enemyShootBullet();
-    printf("enemy bullet count: %d\n", enemyBullCount);
+  if(enemy.pos[0] > ship.pos[0] - 100 && enemy.pos[0] < ship.pos[0] + 100 )
+  {
+	  double at = timeDiff(&enemyBulletTimer, &timeCurrent);
+	  double fire = ( stats.fireSpeed*.1 > 1.35 ) ? 1.35 : stats.fireSpeed*.1;
+	  if(at > 1.5 - fire) {
+		  if ( play_sounds )
+			fmod_playsound(2);		
+		clock_gettime(CLOCK_REALTIME, &enemyBulletTimer);
+		enemyShootBullet();
+		printf("enemy bullet count: %d\n", enemyBullCount);
+	  }
+	  if(enemy.pos[1] < (double)(yres)-500) {
+		deleteEnemy();
+		//stats.health--;
+		//checkDeath();
+	  }
   }
 }
 
-void deleteEnemy() {
-  enemy.pos[0] = random(xres);
-  enemy.pos[1] = (double)(yres)+50;
-}
+
 
 void deleteEnemyBullet(Bullet *node)
 {
@@ -227,40 +245,59 @@ void updateBulletPos() {
   clock_gettime(CLOCK_REALTIME, &bt);
   Bullet *b = bhead;
   while(b) {
-    b->pos[0] += b->vel[0];// + .3 * stats.moveSpeed;
-    b->pos[1] += b->vel[1] + .3 * stats.moveSpeed;
+	  if (b->explode == 0)
+	  {
+		b->pos[0] += b->vel[0];
+		b->pos[1] += b->vel[1] + .3 * stats.moveSpeed;
+	}
     //Check for collision with window edges
     if (b->pos[0] < 0.0) {
+	  Bullet *saveb = b->next;
       deleteBullet(b);
+      b = saveb;
+      continue;
     }
     else if (b->pos[0] > (Flt)xres) {
+      Bullet *saveb = b->next;
       deleteBullet(b);
+      b = saveb;
+      continue;
     }
     else if (b->pos[1] < 0.0) {
+      Bullet *saveb = b->next;
       deleteBullet(b);
+      b = saveb;
+      continue;
     }
     else if (b->pos[1] > (Flt)yres) {
+      Bullet *saveb = b->next;
       deleteBullet(b);
+      b = saveb;
+      continue;
     }
-    if (b->pos[0] >= enemy.pos[0]-20 && b->pos[0] <= enemy.pos[0]+20
-        && b->pos[1] >= enemy.pos[1]-30 && b->pos[1] <= enemy.pos[1]+30) {
-			
-		if (play_sounds)
-			fmod_playsound(3);
-		printf("Hit enemy -- ");
-      deleteBullet(b);
-      deleteEnemy();
-      kills++;
-      checkUpgrades();
-      
-    }
+    if (b->explode == 0)
+    {
+		if (b->pos[0] >= enemy.pos[0]-20 && b->pos[0] <= enemy.pos[0]+20
+			&& b->pos[1] >= enemy.pos[1]-30 && b->pos[1] <= enemy.pos[1]+30) {
+				
+			if (play_sounds)
+				fmod_playsound(3);
+			printf("Hit enemy -- ");
+		  Bullet *saveb = b->next;
+		  //deleteBullet(b);
+		  b->explode = 1;
+		  timeCopy(&b->time, &timeCurrent);
+		  b = saveb;
+	//      b = saveb;
+		  deleteEnemy();
+		  kills++;
+		  checkUpgrades();    
+		  continue;
+		}
+	}
     b = b->next;
   }
-  if(enemy.pos[1] < (double)(yres)-500) {
-    deleteEnemy();
-    //stats.health--;
-    checkDeath();
-  }
+  
 }
 
 void updateEnemyBulletPos() {
@@ -269,12 +306,17 @@ void updateEnemyBulletPos() {
     a->pos[0] -= a->vel[0];// + .3*stats.moveSpeed;
     a->pos[1] -= a->vel[1] + .3*stats.moveSpeed;
     //Check for collision with window edges
-    if (a->pos[1] < (Flt)yres-600) {
+    if (a->pos[1] < 0) {
+	  Bullet *savea = a->next;
       deleteEnemyBullet(a);
+      a = savea;
+      continue;
     }
-    if (a->pos[0] >= ship.pos[0]-20 && a->pos[0] <= ship.pos[0]+20
+    else if (a->pos[0] >= ship.pos[0]-20 && a->pos[0] <= ship.pos[0]+20
         && a->pos[1] >= ship.pos[1]-30 && a->pos[1] <= ship.pos[1]+30) {
+	  Bullet *savea = a->next;		
       deleteEnemyBullet(a);
+      a = savea;
       if(!invincible)
       {
 		  stats.health--;
@@ -282,6 +324,7 @@ void updateEnemyBulletPos() {
 		  invincible ^= 1;
 		  checkDeath();
 	  }
+	  continue;
     }
     a = a->next;
   }
@@ -333,6 +376,7 @@ void initEnemy() {
 void initBullet() {
   Bullet *b = bhead;
   while(b) {
+	  /*
     glColor3f(0, 0, 255);
     glBegin(GL_POINTS);
     glVertex2f(b->pos[0],      b->pos[1]);
@@ -347,23 +391,74 @@ void initBullet() {
     glVertex2f(b->pos[0]+1.0f, b->pos[1]+1.0f);
     glEnd();
     b = b->next;
+    */
+		double sa;
+		int saTime;
+		if (b->explode == 0)
+		{
+			sa =timeDiff(&b->time,&timeCurrent);
+			sa = sa*10;
+			saTime = (int) sa;
+			saTime = saTime%3;
+		} else {
+			sa = timeDiff(&b->time, &timeCurrent);
+			sa = sa*10;
+			saTime = (int) sa;
+			saTime = saTime %6;
+			saTime += 3;
+
+		}
+		glPushMatrix();
+		glTranslatef(b->pos[0],b->pos[1],b->pos[2]);
+		glEnable(GL_ALPHA_TEST);
+		//glAlphaFunc(GL_GREATER, 0.0f);
+		glBindTexture(GL_TEXTURE_2D, bulletTexture[saTime]);
+		glBegin(GL_QUADS);
+		int w = bulletImage[saTime]->width;
+		glTexCoord2f(0.0f, 0.0f); glVertex2f(-w, w);
+		glTexCoord2f(1.0f, 0.0f); glVertex2f( w, w);
+		glTexCoord2f(1.0f, 1.0f); glVertex2f( w, -w);
+		glTexCoord2f(0.0f, 1.0f); glVertex2f(-w, -w);
+		glEnd();
+		glBindTexture(GL_TEXTURE_2D, 0);
+		//glDisable(GL_ALPHA_TEST);
+		glPopMatrix();	    
+		
+		if(timeDiff(&b->time, &timeCurrent) >= .6 && b->explode == 1)
+		{
+			Bullet *saveb = b->next;
+			deleteBullet(b);
+			b = saveb;
+			continue;
+		}		
+		b = b->next;
   }
+  
   Bullet *a = ahead;
   while(a) {
-    glColor3f(255, 0, 0);
-    glBegin(GL_POINTS);
-    glVertex2f(a->pos[0],      a->pos[1]);
-    glVertex2f(a->pos[0]-1.0f, a->pos[1]);
-    glVertex2f(a->pos[0]+1.0f, a->pos[1]);
-    glVertex2f(a->pos[0],      a->pos[1]-1.0f);
-    glVertex2f(a->pos[0],      a->pos[1]+1.0f);
-    glColor3f(255, 0.8, 0.8);
-    glVertex2f(a->pos[0]-1.0f, a->pos[1]-1.0f);
-    glVertex2f(a->pos[0]-1.0f, a->pos[1]+1.0f);
-    glVertex2f(a->pos[0]+1.0f, a->pos[1]-1.0f);
-    glVertex2f(a->pos[0]+1.0f, a->pos[1]+1.0f);
-    glEnd();
-    a = a->next;
+    double sa;
+		int saTime;
+		sa =timeDiff(&a->time,&timeCurrent);
+		sa = sa*10;
+		saTime = (int) sa;
+		saTime = saTime%3;
+				
+		glPushMatrix();
+		glTranslatef(a->pos[0],a->pos[1],a->pos[2]);
+		glEnable(GL_ALPHA_TEST);
+		//glAlphaFunc(GL_GREATER, 0.0f);
+		glBindTexture(GL_TEXTURE_2D, enemyBulletTexture[saTime]);
+		glBegin(GL_QUADS);
+		int w = enemyBulletImage[saTime]->width;
+		glTexCoord2f(0.0f, 0.0f); glVertex2f(-w, w);
+		glTexCoord2f(1.0f, 0.0f); glVertex2f( w, w);
+		glTexCoord2f(1.0f, 1.0f); glVertex2f( w, -w);
+		glTexCoord2f(0.0f, 1.0f); glVertex2f(-w, -w);
+		glEnd();
+		glBindTexture(GL_TEXTURE_2D, 0);
+		//glDisable(GL_ALPHA_TEST);
+		glPopMatrix();	    
+		a = a->next;
   }
 }
 
@@ -439,3 +534,6 @@ void dispEnemy(Enemy enemy, GLuint enemyTexture)
   glEnd();
   glPopMatrix();
 }
+
+	
+	

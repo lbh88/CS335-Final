@@ -20,8 +20,8 @@ See other sample programs in the fmod /examples directory
 #define MAX_SOUNDS 32
 FMOD_SYSTEM  *xsystem;
 FMOD_SOUND   *sound[MAX_SOUNDS];
-FMOD_CHANNEL *channel = 0;
-static int nsounds=0;
+FMOD_CHANNEL *channel;
+static int nsounds;
 
 int ERRCHECK(FMOD_RESULT result)
 {
@@ -63,18 +63,6 @@ int fmod_createsound(char *fname, int i)
 		return 1;
 	}
 	++nsounds;
-	return 0;
-}
-
-int fmod_playsound(int i)
-{
-	FMOD_RESULT result;
-	//printf("fmod_playsound(%i)...\n",i);
-	result = FMOD_System_PlaySound(xsystem, FMOD_CHANNEL_FREE, sound[i], 0, &channel);
-	if (ERRCHECK(result)) {
-		printf("error fmod_playsound()\n");
-		return 1;
-	}
 	return 0;
 }
 
@@ -127,16 +115,6 @@ int fmod_cleanup(void)
 	if (ERRCHECK(result)) return 1;
 	result = FMOD_System_Release(xsystem);
 	if (ERRCHECK(result)) return 1;
-	return 0;
-}
-
-int fmod_cleanupIntro(int i)
-{
-	int result = FMOD_Sound_Release(sound[i]);
-	nsounds--;
-	if (ERRCHECK(result)) {
-		return 1;
-	}
 	return 0;
 }
 

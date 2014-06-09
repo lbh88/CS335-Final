@@ -1,3 +1,8 @@
+//Lam Ha 
+//cs335 Spring 2014
+//date:		2014
+//
+//
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,8 +24,16 @@
 
 #ifdef USE_SOUND
 #include <FMOD/fmod.h>
-#include <FMOD/wincompat.h>
 #include "fmod.h"
+#include <FMOD/fmod_errors.h>
+#include <stdio.h>
+
+//local global variables are defined here
+#define MAX_SOUNDS 32
+FMOD_SYSTEM  *xsystem;
+FMOD_SOUND   *sound[MAX_SOUNDS];
+FMOD_CHANNEL *channel = 0;
+static int nsounds=0;
 #endif //USE_SOUND
 #define MakeVector(x, y, z, v) (v)[0]=(x),(v)[1]=(y),(v)[2]=(z)
 #define VecCopy(a,b) (b)[0]=(a)[0];(b)[1]=(a)[1];(b)[2]=(a)[2]
@@ -70,12 +83,28 @@ typedef struct t_enemy {
   float radius;
 } Enemy;
 
+typedef struct t_bullet {
+  int bulletCount;
+  Vec pos;
+  Vec vel;
+  int explode;
+  float color[3];
+  struct timespec time;
+  struct t_bullet *prev;
+  struct t_bullet *next;
+} Bullet;
+Bullet *bhead;
+Bullet *ahead;
+
 
 int xres, yres;
 int kills;
 int dead;
 int invincible;
 GLuint shipTexture[10];
+GLuint bulletTexture[10];
+GLuint enemyBulletTexture[3];
+
 GLuint introTexture;
 GLuint gameOverTexture;
 GLuint silhouetteTexture;
@@ -84,6 +113,8 @@ GLuint backgroundTexture2;
 Ppmimage *introImage=NULL;
 Ppmimage *gameOverImage=NULL;
 Ppmimage *shipImage[10];
+Ppmimage *bulletImage[10];
+Ppmimage *enemyBulletImage[3];
 
 int keys[65536];
 Stats stats;
@@ -103,6 +134,7 @@ int play_sounds;
 int bullCount;
 
 unsigned char *buildAlphaData(Ppmimage *img);
+void deleteAllBullets();
 
 
 Enemy enemy;
@@ -140,17 +172,8 @@ void intro()
 	
 }
 
-void endIntroSong()
-{
-	
-}
-
-
 void draw_ship(void)
 {
-  //buildShipImage();
-  //dispShip();
-  //Log("draw_ship()...\n");
 	if (stats.health	> 0)
 	{
 		double sa;
@@ -171,33 +194,21 @@ void draw_ship(void)
 			if (saTime == 1)
 				saTime = 9;
 		}
-		
-		if (ship.shape == SHIP_FLAT) {
-			//glColor4f(1.0f, 0.2f, 0.2f, 0.5f);
-			glLineWidth(40);
-			glBegin(GL_LINES);
-			glVertex2f(ship.pos[0]-ship.width2, ship.pos[1]);
-			glVertex2f(ship.pos[0]+ship.width2, ship.pos[1]);
-			glEnd();
-			glLineWidth(1);
-		} else {
-		//glColor4f(1.0f, 1.0f, 1.0f, 0.8f);
-			glPushMatrix();
-			glTranslatef(ship.pos[0],ship.pos[1],ship.pos[2]);
-			glEnable(GL_ALPHA_TEST);
-			//glAlphaFunc(GL_GREATER, 0.0f);
-			glBindTexture(GL_TEXTURE_2D, shipTexture[saTime]);
-			glBegin(GL_QUADS);
-			float w = ship.width2;
-			glTexCoord2f(0.0f, 0.0f); glVertex2f(-w, w);
-			glTexCoord2f(1.0f, 0.0f); glVertex2f( w, w);
-			glTexCoord2f(1.0f, 1.0f); glVertex2f( w, -w);
-			glTexCoord2f(0.0f, 1.0f); glVertex2f(-w, -w);
-			glEnd();
-			glBindTexture(GL_TEXTURE_2D, 0);
-			//glDisable(GL_ALPHA_TEST);
-			glPopMatrix();
-		}	
+		glPushMatrix();
+		glTranslatef(ship.pos[0],ship.pos[1],ship.pos[2]);
+		glEnable(GL_ALPHA_TEST);
+		//glAlphaFunc(GL_GREATER, 0.0f);
+		glBindTexture(GL_TEXTURE_2D, shipTexture[saTime]);
+		glBegin(GL_QUADS);
+		float w = ship.width2;
+		glTexCoord2f(0.0f, 0.0f); glVertex2f(-w, w);
+		glTexCoord2f(1.0f, 0.0f); glVertex2f( w, w);
+		glTexCoord2f(1.0f, 1.0f); glVertex2f( w, -w);
+		glTexCoord2f(0.0f, 1.0f); glVertex2f(-w, -w);
+		glEnd();
+		glBindTexture(GL_TEXTURE_2D, 0);
+		//glDisable(GL_ALPHA_TEST);
+		glPopMatrix();	
 	} else {
 		int i = 0;
 		deathTime = timeDiff(&deathTimer,&timeCurrent);
@@ -261,7 +272,6 @@ void draw_ship(void)
 		//glDisable(GL_ALPHA_TEST);
 		glPopMatrix();
 	}
-  
 }
 
 void dispBG()
@@ -291,16 +301,18 @@ void dispBG()
 	glAlphaFunc(GL_GREATER, 0.0f);
 	glColor4ub(255,255,255,255);
 	
-	bgPos1[1] = bgPos1[1] - (.05* stats.moveSpeed);
-	bgPos2[1] = bgPos2[1] - (.05* stats.moveSpeed);
+	bgPos1[1] = bgPos1[1] - (.01* stats.moveSpeed);
+	bgPos2[1] = bgPos2[1] - (.01* stats.moveSpeed);
 	
 	if (bgPos1[1] < (0-yres/2))
 	{
 		bgPos1[1]= yres + yres/2;
+		bgPos1[0] = xres/2;
 	}
 	if (bgPos2[1] < (0-yres/2))
 	{
 		bgPos2[1]= yres + yres/2;
+		bgPos2[0] = xres/2;
 	}
 	
 
@@ -338,6 +350,64 @@ void dispIntro()
 	
 }
 
+void buildBulletImage()
+{	
+	bulletImage[0]  = ppm6GetImage("./images/shipBullet.ppm");
+	bulletImage[1]  = ppm6GetImage("./images/shipBullet1.ppm");
+	bulletImage[2]  = ppm6GetImage("./images/shipBullet2.ppm");
+	bulletImage[3]  = ppm6GetImage("./images/shipBullet3.ppm");
+	bulletImage[4]  = ppm6GetImage("./images/shipBullet4.ppm");
+	bulletImage[5]  = ppm6GetImage("./images/shipBullet5.ppm");
+	bulletImage[6]  = ppm6GetImage("./images/shipBullet6.ppm");
+	bulletImage[7]  = ppm6GetImage("./images/shipBullet7.ppm");
+	bulletImage[8]  = ppm6GetImage("./images/shipBullet8.ppm");
+	printf("before ship bullet\n");
+	enemyBulletImage[0]  = ppm6GetImage("./images/enemyBullet.ppm");
+	enemyBulletImage[1]  = ppm6GetImage("./images/enemyBullet1.ppm");
+	enemyBulletImage[2]  = ppm6GetImage("./images/enemyBullet2.ppm");
+
+	int i = 0; //index for for loop
+	for ( i = 0 ; i <= 8; i++)
+	{
+		glGenTextures(1, &bulletTexture[i]);
+		glGenTextures(1, &silhouetteTexture);
+			
+		int w = bulletImage[i]->width;
+		int h = bulletImage[i]->height;
+		//
+		glBindTexture(GL_TEXTURE_2D, bulletTexture[i]);
+		//
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+		glTexImage2D(GL_TEXTURE_2D, 0, 3, w, h, 0,
+								GL_RGB, GL_UNSIGNED_BYTE, bulletImage[i]->data);
+		unsigned char *silhouetteData = buildAlphaData(bulletImage[i]);	
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0,
+								GL_RGBA, GL_UNSIGNED_BYTE, silhouetteData);
+		free(silhouetteData);
+	}
+	printf("after ship bullet\n");
+	for ( i = 0 ; i <= 2; i++)
+	{
+		glGenTextures(1, &enemyBulletTexture[i]);
+		glGenTextures(1, &silhouetteTexture);
+			
+		int w = enemyBulletImage[i]->width;
+		int h = enemyBulletImage[i]->height;
+		//
+		glBindTexture(GL_TEXTURE_2D, enemyBulletTexture[i]);
+		//
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+		glTexImage2D(GL_TEXTURE_2D, 0, 3, w, h, 0,
+								GL_RGB, GL_UNSIGNED_BYTE, enemyBulletImage[i]->data);
+		unsigned char *silhouetteData = buildAlphaData(enemyBulletImage[i]);	
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0,
+								GL_RGBA, GL_UNSIGNED_BYTE, silhouetteData);
+		free(silhouetteData);
+	}
+}
+
 void buildShipImage()
 {	
 	shipImage[0]  = ppm6GetImage("./images/spaceship.ppm");
@@ -351,54 +421,6 @@ void buildShipImage()
 	shipImage[8]  = ppm6GetImage("./images/explosion5.ppm");
 	shipImage[9]  = ppm6GetImage("./images/explosion6.ppm");
 
-/*	else
-	{
-		deathTime = timeDiff(&deathTimer,&timeCurrent);
-		if (deathTime < .4)
-		{
-			shipImage = ppm6GetImage("./images/explosion.ppm");
-		}
-		else if (deathTime < .8)
-		{
-			shipImage = ppm6GetImage("./images/explosion1.ppm");
-		}
-		else if (deathTime < 1.2 )
-		{
-			shipImage = ppm6GetImage("./images/explosion2.ppm");
-		}
-		else if (deathTime < 1.6 )
-		{
-			shipImage = ppm6GetImage("./images/explosion3.ppm");
-		}
-		else if (deathTime < 2)
-		{
-			shipImage = ppm6GetImage("./images/explosion4.ppm");
-		}
-		*/
-		/*
-		
-		if (deathTime > 2)
-		{
-			show_ship ^= 1;
-			dead ^= 1;
-			printf("playing sawyer\n");
-			if (fmod_init()) {
-				printf("ERROR - fmod_init()\n\n");
-				return;
-			}
-			if (fmod_createsound("./sounds/sawyer.mp3", 0)) {
-				printf("ERROR - fmod_createsound()\n\n");
-				return;
-			}
-			fmod_setmode(0,FMOD_LOOP_OFF);
-			fmod_playsound(0);
-		}
-		
-	}
-	*/
-	//
-	//create opengl texture elements
-	
 	int i = 0; //index for for loop
 	for ( i = 0 ; i <= 9; i++)
 	{
@@ -538,7 +560,16 @@ void init_sounds(void)
 		printf("ERROR - fmod_createsound()\n\n");
 		return;
 	}
-	fmod_setmode(3,FMOD_LOOP_OFF);
+	if (fmod_init()) {
+		printf("ERROR - fmod_init()\n\n");
+		return;
+	}
+	if (fmod_createsound("./sounds/explosion2.mp3", 4)) {
+		printf("ERROR - fmod_createsound()\n\n");
+		return;
+	}
+	
+	fmod_setmode(4,FMOD_LOOP_OFF);
 	
 #endif //USE_SOUND
 }
@@ -568,11 +599,11 @@ void enemyMovement()
 {
 	if (enemy.pos[0] < ship.pos[0])
 	{
-		enemy.pos[0] += 1 + .2*stats.moveSpeed;
+		enemy.pos[0] += 1 + .4*stats.moveSpeed;
 	}
 	else if (enemy.pos[0] > ship.pos[0])
 	{
-		enemy.pos[0] -= 1 + .2*stats.moveSpeed;
+		enemy.pos[0] -= 1 + .4*stats.moveSpeed;
 	}
 	
 }
@@ -639,6 +670,7 @@ void checkDeath()
 {
 	if (stats.health <= 0 )
 	{
+		deleteAllBullets();
 		fmod_cleanupIntro(0);
 		show_enemy ^= 1;
 		bg ^= 1;
@@ -655,7 +687,7 @@ void checkDeath()
 			return;
 		}
 		fmod_setmode(0,FMOD_LOOP_OFF); */
-		//fmod_playsound(3);
+		fmod_playsound(4);
 		#endif //USE_SOUND
 	}
 	return;
@@ -681,3 +713,52 @@ void restartGame()
 	bg ^= 1;
 	
 }
+
+int fmod_cleanupIntro(int i)
+{
+	int result = FMOD_Sound_Release(sound[i]);
+	nsounds--;
+	if (ERRCHECK(result)) {
+		return 1;
+	}
+	return 0;
+}
+
+int fmod_playsound(int i)
+{
+	FMOD_RESULT result;
+	//printf("fmod_playsound(%i)...\n",i);
+	result = FMOD_System_PlaySound(xsystem, FMOD_CHANNEL_FREE, sound[i], 0, &channel);
+	if (ERRCHECK(result)) {
+		printf("error fmod_playsound()\n");
+		return 1;
+	}
+	result = FMOD_System_Update(xsystem);
+	if (ERRCHECK(result)) {
+		printf("error updating system \n");
+		return 1;
+	}
+	return 0;
+}
+
+void deleteAllBullets()
+{
+	Bullet *a = ahead;
+	Bullet *b = bhead;
+	while (a) 
+	{
+		Bullet *sa = a->next;
+		deleteBullet(a);
+		a = sa;
+	}
+	while (b)
+	{
+		Bullet  *sb = b->next;
+		deleteBullet(b);
+		b = sb;
+	}
+	ahead = NULL;
+	bhead = NULL;
+	
+}
+

@@ -67,6 +67,7 @@ void physics(void);
 void render(void);
 void checkUpgrades(void);
 void updateEnemyBulletPos(void);
+int ERRCHECK(FMOD_RESULT);
 //void dispBG(void);
 //void dispShip(void);
 
@@ -397,6 +398,7 @@ void init_opengl(void)
   glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
   glTexImage2D(GL_TEXTURE_2D, 0, 3, backgroundImage->width, backgroundImage->height, 0, GL_RGB, GL_UNSIGNED_BYTE, backgroundImage->data);
   
+  buildBulletImage();
   buildShipImage();
   buildEnemyImage();
 }

@@ -19,5 +19,8 @@ extern void restartGame();
 extern void dispGameOver();
 extern void checkDeath();
 extern void draw_ship();
+extern int fmod_cleanupIntro(int);
+extern int fmod_playsound(int i);
+extern void buildBulletImage();
 
 #endif

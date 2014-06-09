@@ -186,10 +186,10 @@ void check_enemies() {
     enemyMovement();
     dispEnemy(enemy, enemyTexture);
   }
-  if(enemy.pos[0] > ship.pos[0] - 100 && enemy.pos[0] < ship.pos[0] + 100 )
+  if(enemy.pos[0] > ship.pos[0] - 150 && enemy.pos[0] < ship.pos[0] + 150 )
   {
 	  double at = timeDiff(&enemyBulletTimer, &timeCurrent);
-	  double fire = ( stats.fireSpeed*.1 > 1.35 ) ? 1.35 : stats.fireSpeed*.1;
+	  double fire = ( stats.fireSpeed*.3 > 1.35 ) ? 1.35 : stats.fireSpeed*.3;
 	  if(at > 1.5 - fire) {
 		  if ( play_sounds )
 			fmod_playsound(2);		
@@ -251,7 +251,13 @@ void updateBulletPos() {
 	  {
 		b->pos[0] += b->vel[0];
 		b->pos[1] += b->vel[1] + .3 * stats.moveSpeed;
-	}
+		}
+	  if (b->explode == 1)
+	  {
+		  b->pos[0] += b->vel[0];
+		  b->pos[1] -= 2.5;
+	  }
+		  
     //Check for collision with window edges
     if (b->pos[0] < 0.0) {
 	  Bullet *saveb = b->next;
